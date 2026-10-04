@@ -4,11 +4,19 @@ Interface en français, identité Richmedia (noir et violet) et espace YES Baby 
 
 ## Supabase et Vercel
 
-L'intégration est préparée : Supabase stocke les campagnes et gère la connexion ; Vercel sert l'interface statique construite depuis GitHub. Aucune base supplémentaire n'est nécessaire chez Vercel. La page de gestion conserve son lien séparé, réservé aux administrateurs Richmedia.
+Le portail de production est déployé sur [campagne-yes-ten.vercel.app](https://campagne-yes-ten.vercel.app), en mode Supabase. Le premier déploiement opérationnel utilise le commit `8ad996c`. Supabase stocke les campagnes et gère la connexion ; Vercel sert l'interface statique construite depuis GitHub. Aucune base supplémentaire n'est nécessaire chez Vercel. La page de gestion conserve son lien séparé, réservé aux administrateurs Richmedia.
 
-**État actuel : aucun projet Supabase n'est encore connecté.** Le fichier `portal-config.js` garde le mode local pour conserver l'aperçu utilisable. Le build de production active obligatoirement Supabase et refuse de continuer si la configuration manque. Il ne publie jamais un accès local sans authentification.
+**État vérifié de la production :** le projet Supabase `jfsxvrfpaxacxbpemlgo` est configuré, la migration SQL a été appliquée et les 11 campagnes locales ont été importées avec leurs identifiants et leurs dates de création et de modification d'origine. Toutes sont actives, avec les montants et compteurs à zéro. Les trois variables Vercel sont définies pour l'environnement **Production**. Les inscriptions publiques et les connexions anonymes sont désactivées ; la Site URL Supabase correspond au domaine de production. Les lectures anonymes de la table des campagnes et de la RPC de liste ont été refusées avec HTTP `401` et le code PostgreSQL `42501`.
 
-1. Créer le projet et appliquer le [script SQL](supabase/migrations/202610040001_portal.sql), puis créer les comptes et leurs rôles selon le [guide Supabase](supabase/README.md).
+**À terminer :** créer les comptes Auth, attribuer les rôles Richmedia et YES, puis valider la connexion et les droits avec ces comptes. Le déploiement ne signifie donc pas encore que les accès client sont opérationnels. Voir le [guide Supabase](supabase/README.md).
+
+Le fichier source `portal-config.js` conserve volontairement le mode local pour que le prototype reste utilisable jusqu'à la création des comptes. Le site Vercel utilise sa propre configuration générée au build. Les données locales et celles de Supabase sont désormais deux copies indépendantes : aucune synchronisation automatique n'est active. Le build de production active obligatoirement Supabase et refuse de continuer si la configuration manque. Il ne publie jamais un accès local sans authentification.
+
+### Nouvelle installation
+
+Les étapes suivantes servent à installer un autre environnement ; elles ne sont pas à répéter sur la production déjà configurée.
+
+1. Créer le projet, appliquer le [script SQL](supabase/migrations/202610040001_portal.sql), importer les campagnes souhaitées, puis créer les comptes et leurs rôles selon le [guide Supabase](supabase/README.md).
 2. Installer les dépendances avec `npm ci` (Node.js 22 ou supérieur).
 3. Importer le dépôt `sdmimouni-prog/campagne-yes` dans Vercel. Le portail est à la racine du dépôt : conserver **Root Directory** sur `.`. Framework : **Other** ; commande de build : `npm run build` ; dossier publié : `dist`. Le fichier `vercel.json` définit déjà les deux derniers réglages.
 4. Dans les variables Vercel, renseigner `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID=yes-baby`. Utiliser les valeurs du projet voulu pour l'environnement de production ; un environnement de test devrait avoir son propre projet et ses propres comptes.
@@ -42,15 +50,16 @@ La liste permet de modifier, archiver et restaurer. Les archives sont exclues du
 
 En mode Supabase, les données sont partagées entre les appareils, avec un historique horodaté de chaque modification et de son auteur. Richmedia peut créer, modifier, archiver et restaurer ; YES dispose d'un accès en lecture aux campagnes actives. Les contrôles s'appliquent aussi aux appels directs à l'API.
 
-En mode local uniquement, le serveur conserve les données dans `.data/campaigns.sqlite3`, avec un historique des changements. La base reste après redémarrage. Ce dossier est exclu de Git et inaccessible depuis HTTP. Pour sauvegarder les données, arrêter le serveur et copier la base, puis redémarrer. Aucun transfert de SQLite vers Supabase n'est automatique : les données locales devront être importées après vérification lors de l'activation.
+En mode local uniquement, le serveur conserve les données dans `.data/campaigns.sqlite3`, avec un historique des changements. La base reste après redémarrage. Ce dossier est exclu de Git et inaccessible depuis HTTP. Pour sauvegarder les données, arrêter le serveur et copier la base, puis redémarrer. L'import initial vers Supabase a été réalisé ; les changements ultérieurs dans SQLite ne sont pas transférés automatiquement et doivent faire l'objet d'un import vérifié si nécessaire.
 
-Le 4 octobre 2026, quatre campagnes YouTube ont été créées sur demande, avec la durée et le format dans leur nom : Reach 30 s InStream désactivable, Reach 15 s InStream non désactivable, Awareness 7 s InStream non désactivable, Awareness 5 s Bumper. Tous les montants et compteurs sont initialisés à zéro, sur la période du plan média du 1er octobre au 31 décembre 2026. Elles sont modifiables depuis la gestion. Le [script d'initialisation Supabase](supabase/seed-yes-youtube.sql) conserve leurs identifiants et évite les doublons ; si les chiffres ont été modifiés localement depuis, importer l'état actuel plutôt que ces zéros initiaux.
+Les 11 campagnes créées le 4 octobre 2026 sont présentes dans Supabase et dans l'aperçu local, sur la période du plan média du 1er octobre au 31 décembre 2026 :
 
-Les deux campagnes Facebook « Yes - Facebook - Reel » et « Yes - Facebook - Story » sont également initialisées avec tous les montants et compteurs à zéro, sur la période du 01/10/2026 au 31/12/2026. Le [script d'initialisation Facebook](supabase/seed-yes-facebook.sql) est idempotent : il ne duplique ni ne remet à zéro les campagnes existantes. Si les chiffres locaux évoluent, exporter l'état actuel avant la migration et importer ces données plutôt que les zéros initiaux.
+- YouTube : Reach 30 s InStream désactivable, Reach 15 s InStream non désactivable, Awareness 7 s InStream non désactivable et Awareness 5 s Bumper.
+- Facebook : « Yes - Facebook - Reel » et « Yes - Facebook - Story ».
+- Instagram : « Yes - Instagram - Reel » et « Yes - Instagram - Story ».
+- TikTok : « Yes - TikTok - In-Feed classique », « Yes - TikTok - Spark Ads » et « Yes - TikTok - TopView ».
 
-Les deux campagnes Instagram « Yes - Instagram - Reel » et « Yes - Instagram - Story » sont initialisées avec tous les montants et compteurs à zéro, sur la même période du 01/10/2026 au 31/12/2026. Le [script d'initialisation Instagram](supabase/seed-yes-instagram.sql) est idempotent : il ne duplique ni ne remet à zéro les campagnes existantes. Si les chiffres locaux évoluent, exporter l'état actuel avant la migration et importer ces données plutôt que les zéros initiaux.
-
-Les trois campagnes TikTok « Yes - TikTok - In-Feed classique », « Yes - TikTok - Spark Ads » et « Yes - TikTok - TopView » sont initialisées avec tous les montants et compteurs à zéro, sur la même période du 01/10/2026 au 31/12/2026. Le [script d'initialisation TikTok](supabase/seed-yes-tiktok.sql) est idempotent : il conserve les campagnes existantes sans doublons ni remise à zéro. Si les chiffres locaux évoluent, exporter l'état actuel avant la migration et importer ces données plutôt que les zéros initiaux. Ces fiches servent au reporting ; leur création ne lance aucune campagne publicitaire.
+L'import de production a conservé les UUID et les horodatages `created_at` et `updated_at` d'origine. Les scripts d'initialisation [YouTube](supabase/seed-yes-youtube.sql), [Facebook](supabase/seed-yes-facebook.sql), [Instagram](supabase/seed-yes-instagram.sql) et [TikTok](supabase/seed-yes-tiktok.sql) restent disponibles pour une nouvelle installation à zéro. Ils sont idempotents : ils ne dupliquent ni ne remettent à zéro les campagnes existantes. Pour migrer des chiffres qui ont évolué, exporter l'état actuel et importer ces données plutôt que les zéros initiaux. Ces fiches servent au reporting ; leur création ne lance aucune campagne publicitaire.
 
 ## Dashboard et sources
 
@@ -85,6 +94,6 @@ Tests API locale : création, remplacement, conflit de version, sauvegarde persi
 
 Pour préparer le SDK sur le serveur local après configuration de Supabase : `npm run vendor`. Pour compiler l'aperçu local : `npm run build:local` (interdit pour un déploiement Vercel). Pour tester le build de production sur l'ordinateur, utiliser les variables de `.env.example` avec `node --env-file=.env scripts/build.mjs` ; le script ne charge pas `.env` implicitement.
 
-Les tests locaux ne remplacent pas la recette avec les deux comptes sur le projet Supabase réel. La connexion Auth distante et les URL du domaine restent à vérifier après sa création.
+Sur la production, le déploiement, l'import des 11 campagnes, la configuration de la Site URL et le refus des lectures anonymes ont été vérifiés. Les pages dashboard et gestion redirigent bien vers la connexion en l'absence de session. Les tests locaux ne remplacent pas la recette avec les deux comptes sur le projet Supabase réel : la connexion Auth distante, les droits administrateur/lecteur et les redirections après connexion restent à vérifier après la création des comptes.
 
 Les essais de navigateur utilisent une copie du serveur sur le port 8769 et une base de test hors projet, sans ajouter de fausses campagnes dans la base utilisateur. Le téléchargement CSV doit encore être vérifié dans le navigateur de production : le navigateur intégré permet de préparer le fichier mais n’a pas confirmé sa sauvegarde sur disque.

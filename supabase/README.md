@@ -1,8 +1,24 @@
 # Base partagée Supabase
 
-Cette migration prépare le stockage du portail. Elle ne crée ni projet Supabase, ni comptes, ni mots de passe et n'est pas appliquée automatiquement à une base distante.
+Cette migration définit le stockage du portail. Elle ne crée ni projet Supabase, ni comptes, ni mots de passe et n'est pas appliquée automatiquement à une base distante.
 
-## Installation
+## État de la production
+
+Le projet [Supabase `jfsxvrfpaxacxbpemlgo`](https://supabase.com/dashboard/project/jfsxvrfpaxacxbpemlgo) est relié au portail [campagne-yes-ten.vercel.app](https://campagne-yes-ten.vercel.app), déployé sur Vercel en mode Supabase. Le premier déploiement opérationnel utilise le commit `8ad996c`.
+
+- La migration `migrations/202610040001_portal.sql` a été appliquée avec succès dans le SQL Editor.
+- Les 11 campagnes ont été importées : 4 YouTube, 2 Facebook, 2 Instagram et 3 TikTok. Les UUID et les horodatages `created_at` et `updated_at` d'origine ont été conservés. Toutes les campagnes sont actives, avec les montants et compteurs à zéro, sur la période du 01/10/2026 au 31/12/2026.
+- Les inscriptions publiques et les connexions anonymes sont désactivées. La Site URL est `https://campagne-yes-ten.vercel.app`.
+- Les trois variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID` sont configurées dans l'environnement **Production** de Vercel.
+- Les lectures anonymes de `portal_campaigns` et de `portal_list_campaigns` sont refusées : HTTP `401`, code PostgreSQL `42501`.
+
+**Restent à réaliser :** créer les comptes Auth Richmedia et YES, leur attribuer les rôles dans `portal_memberships`, puis vérifier la connexion, les redirections et les droits avec les deux comptes. Le refus des appels anonymes ne valide pas à lui seul les parcours authentifiés.
+
+Le fichier source `portal-config.js` reste en mode local pour conserver le prototype utilisable jusqu'à la création des comptes. La production utilise la configuration générée par le build Vercel. L'import déjà réalisé ne synchronise pas SQLite et Supabase ; toute nouvelle modification locale reste locale.
+
+## Installation d'un nouvel environnement
+
+Ces étapes décrivent une installation complète. Pour la production ci-dessus, poursuivre uniquement les étapes concernant les comptes, leurs rôles et la validation authentifiée ; ne pas réappliquer la migration ni réimporter les campagnes initiales.
 
 1. Créer le projet Supabase destiné au portail.
 2. Exécuter `migrations/202610040001_portal.sql` dans le SQL Editor avec le propriétaire de la base, ou avec le mécanisme de migrations Supabase. Ce script transactionnel s'exécute une fois.
@@ -13,11 +29,11 @@ Cette migration prépare le stockage du portail. Elle ne crée ni projet Supabas
 
 Les fichiers SQL, sauvegardes, tests et données SQLite doivent être exclus du répertoire publié par l'hébergeur. Le build du portail doit publier uniquement les ressources de l'interface.
 
-Les quatre campagnes YouTube demandées le 4 octobre 2026 sont déjà enregistrées dans l'aperçu local. `seed-yes-youtube.sql` prépare leur état initial à zéro pour ce projet, après la migration du schéma. Les deux campagnes Facebook « Yes - Facebook - Reel » et « Yes - Facebook - Story » sont également initialisées avec tous les montants et compteurs à zéro, sur la période du 01/10/2026 au 31/12/2026 ; `seed-yes-facebook.sql` prépare leur initialisation Supabase. Les deux campagnes Instagram « Yes - Instagram - Reel » et « Yes - Instagram - Story » suivent la même initialisation à zéro et la même période ; `seed-yes-instagram.sql` prépare leur initialisation Supabase. Les trois campagnes TikTok « Yes - TikTok - In-Feed classique », « Yes - TikTok - Spark Ads » et « Yes - TikTok - TopView » suivent la même initialisation, avec tous les montants et compteurs à zéro sur la période du 01/10/2026 au 31/12/2026 ; `seed-yes-tiktok.sql` prépare leur initialisation Supabase. Ces scripts sont idempotents : ils ne dupliquent ni ne remettent à zéro les campagnes existantes. Avant la migration, si des chiffres locaux ont évolué, exporter l'état actuel et importer ces données plutôt que les zéros initiaux des scripts. Ces fiches servent au reporting ; leur création ne lance aucune campagne publicitaire.
+Pour initialiser un nouvel environnement à zéro après la migration du schéma, les scripts `seed-yes-youtube.sql`, `seed-yes-facebook.sql`, `seed-yes-instagram.sql` et `seed-yes-tiktok.sql` contiennent les 11 campagnes demandées le 4 octobre 2026, sur la période du 01/10/2026 au 31/12/2026. Ils sont idempotents : ils ne dupliquent ni ne remettent à zéro les campagnes existantes. Pour transférer des données locales qui ont évolué, exporter leur état actuel et importer ces données plutôt que les zéros initiaux des scripts. L'import vers la production actuelle est déjà terminé. Ces fiches servent au reporting ; leur création ne lance aucune campagne publicitaire.
 
 Pour Vercel, les variables sont `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `PORTAL_CLIENT_ID=yes-baby`. La clé se trouve dans les réglages API du projet ; choisir une clé **Publishable**, ou l'ancienne clé **anon**, et jamais une clé privilégiée. Le [README du portail](../README.md) détaille le build et les réglages Vercel. Aucun mot de passe PostgreSQL ni chaîne de connexion à la base n'est requis dans Vercel pour cette version.
 
-Pour activer Supabase sur l'aperçu local, remplacer les valeurs de `portal-config.js` par `backend: 'supabase'`, l'URL, la clé publique et `clientId: 'yes-baby'`, puis exécuter `npm ci` et `npm run vendor`. Cette activation n'importe pas la base SQLite locale et ne synchronise pas les deux stockages. Le fichier source est conservé en mode local tant que le projet n'a pas été fourni ; le build Vercel génère sa propre configuration.
+Une fois les comptes opérationnels, pour activer Supabase sur l'aperçu local, remplacer les valeurs de `portal-config.js` par `backend: 'supabase'`, l'URL, la clé publique et `clientId: 'yes-baby'`, puis exécuter `npm ci` et `npm run vendor`. Cette activation n'importe pas la base SQLite locale et ne synchronise pas les deux stockages. Cette bascule locale n'a pas été effectuée ; le build Vercel génère déjà sa propre configuration Supabase.
 
 ## Accès et données
 
