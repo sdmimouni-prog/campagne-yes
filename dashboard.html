@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0d0b13"><meta name="description" content="Richmedia — dashboard de campagne de YES Baby Comfort. Prototype de démonstration.">
+  <title>Dashboard · Richmedia × YES</title>
+  <link rel="stylesheet" href="dashboard.css"><link rel="stylesheet" href="dashboard-charts.css">
+  <script type="module" src="dashboard.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-campaign" viewBox="0 0 24 24"><path d="M3 10v5h4l13 4V5L7 10H3Zm4 5 2 6h4l-2-5M7 10v5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18M7 14h2m6 0h2m-10 3h2"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-click" viewBox="0 0 24 24"><path d="m7 3 12 10-7 1-3 7-2-18Zm7 12 4 6M3 3 1 1m11 2 1-2M3 9l-2 1"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 8V5a2 2 0 0 1 2-2h12v2m4 6h-6v5h6m-3-2.5h.01"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 18 9 12l4 3 8-11m-7 0h7v7"/></symbol>
+    <symbol id="i-display" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-5 0h10"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11a9 9 0 0 1-9 9H5l-3 2 1-6a9 9 0 1 1 18-5Z"/><path d="M7 10h10M7 14h6"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1 .8-1.5 1-1.5 3m0 3h.01"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 3H4v18h5m5-14 5 5-5 5M8 12h12"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8L12 2Z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></symbol>
+  </svg>
+
+  <div class="nav-backdrop" id="nav-backdrop" hidden></div>
+  <aside class="sidebar" id="sidebar" aria-label="Navigation principale">
+    <div class="sidebar-brand"><a href="dashboard.html" aria-label="Richmedia — accueil du dashboard"><img src="assets/richmedia-logo.png" alt="Richmedia — We build digital growth"></a><button class="sidebar-close icon-button" id="close-nav" aria-label="Fermer le menu"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <div class="workspace-card"><div class="yes-mini"><img src="assets/yes-logo-source.png" alt="YES Baby Comfort"></div><div><span>ESPACE CLIENT</span><strong>YES Baby Comfort</strong><small><i></i> Campagne de notoriété</small></div></div>
+    <div class="nav-label">VOTRE ESPACE</div>
+    <nav>
+      <a class="nav-item active" href="#overview" data-view="overview" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg>Dashboard</a>
+      <a class="nav-item" href="#campaigns" data-view="campaigns"><svg class="icon"><use href="#i-campaign"/></svg>Toutes les campagnes<span class="nav-count">3</span></a>
+      <div class="nav-label channels-label">VOS CANAUX</div>
+      <a class="nav-item" href="#meta" data-view="meta"><span class="platform-nav meta-mark">∞</span><span>Meta <small>FB & IG</small></span></a>
+      <a class="nav-item" href="#youtube" data-view="youtube"><span class="platform-nav youtube-mark">▶</span>YouTube</a>
+      <a class="nav-item" href="#tiktok" data-view="tiktok"><span class="platform-nav tiktok-mark">♪</span>TikTok</a>
+      <a class="nav-item" href="#influence" data-view="influence"><svg class="icon"><use href="#i-spark"/></svg>Influence<span class="nav-empty">—</span></a>
+      <a class="nav-item" href="#display" data-view="display"><svg class="icon"><use href="#i-display"/></svg>Display</a>
+      <a class="nav-item" href="#sms" data-view="sms"><svg class="icon"><use href="#i-chat"/></svg>SMS<span class="nav-empty">—</span></a>
+      <a class="nav-item" href="#whatsapp" data-view="whatsapp"><span class="platform-nav whatsapp-mark">◉</span>WhatsApp<span class="nav-empty">—</span></a>
+      <a class="nav-item" href="#email" data-view="email"><svg class="icon"><use href="#i-mail"/></svg>Emailing<span class="nav-empty">—</span></a>
+    </nav>
+    <div class="sidebar-bottom"><div class="agency-support"><span class="support-symbol">✳</span><strong>Une équipe à vos côtés.</strong><p>Votre interlocuteur Richmedia<br>vous accompagne.</p><button id="contact-agency">Contacter mon équipe <svg class="icon"><use href="#i-arrow"/></svg></button></div><a class="return-login" href="index.html"><svg class="icon"><use href="#i-logout"/></svg>Retour à la connexion</a><span class="sidebar-copyright">© 2026 Richmedia</span></div>
+  </aside>
+
+  <div class="app-content">
+    <header class="topbar"><div class="breadcrumb"><button class="icon-button mobile-menu" id="open-nav" aria-label="Ouvrir le menu" aria-controls="sidebar" aria-expanded="false"><svg class="icon"><use href="#i-menu"/></svg></button><span>Espace client</span><span class="breadcrumb-slash">/</span><strong>YES Baby Comfort</strong></div><div class="topbar-right"><span class="demo-pill"><i></i>Démonstration</span><button class="icon-button help-button" id="help-button" aria-label="Aide et sources des données"><svg class="icon"><use href="#i-help"/></svg></button><span class="topbar-divider"></span><div class="profile"><span class="avatar">YB</span><div><strong>Équipe YES</strong><span>Accès client</span></div></div></div></header>
+
+    <main id="main" class="data-loading" tabindex="-1">
+      <div class="page-heading"><div><div class="page-eyebrow">RICHMEDIA ANALYTICS</div><h1 id="page-title">Vue d’ensemble<span class="title-dot">.</span></h1><p id="page-description">Vos campagnes, en un coup d’œil.</p></div><button class="export-button" id="export-report"><svg class="icon"><use href="#i-down"/></svg>Exporter le rapport<span>CSV</span></button></div>
+      <div class="filters"><div class="filter-left"><div class="select-wrap date-select"><svg class="icon"><use href="#i-calendar"/></svg><select id="period-filter" aria-label="Période"><option value="oct">Octobre 2026</option><option value="nov">Novembre 2026</option><option value="dec">Décembre 2026</option><option value="all">Toute la campagne · Oct.–Déc. 2026</option></select></div><div class="select-wrap"><select id="platform-filter" aria-label="Plateforme"><option value="all">Toutes les plateformes</option><option value="meta">Meta · Facebook & Instagram</option><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select></div><div class="select-wrap"><select id="campaign-filter" aria-label="Campagne"><option value="all">Toutes les campagnes</option></select></div></div><span class="source-indicator"><i></i>Source : démonstration</span></div>
+
+      <div class="data-status" id="data-status" role="status"><span id="data-status-text">Chargement des campagnes…</span><button id="retry-data" hidden>Réessayer</button></div>
+      <p class="period-notice" id="period-notice" role="status" hidden></p>
+      <section class="kpi-grid" aria-label="Indicateurs de performance" id="kpi-grid">
+        <article class="kpi-card"><div class="kpi-top"><span>Impressions</span><span class="kpi-icon violet"><svg class="icon"><use href="#i-eye"/></svg></span></div><strong class="kpi-number" id="kpi-impressions">—</strong><div class="kpi-bottom"><span>Diffusions sur vos canaux</span><svg class="sparkline" viewBox="0 0 78 23" aria-hidden="true"><path d="m1 21 11-6 11 3 11-9 11 4 11-8 10 3 10-7"/></svg></div></article>
+        <article class="kpi-card"><div class="kpi-top"><span>Clics</span><span class="kpi-icon blue"><svg class="icon"><use href="#i-click"/></svg></span></div><strong class="kpi-number" id="kpi-clicks">—</strong><div class="kpi-bottom"><span>CTR <strong id="kpi-ctr">—</strong></span><span class="metric-tag">Engagement</span></div></article>
+        <article class="kpi-card"><div class="kpi-top"><span>Dépenses média</span><span class="kpi-icon peach"><svg class="icon"><use href="#i-wallet"/></svg></span></div><strong class="kpi-number money" id="kpi-spend">—</strong><div class="kpi-bottom"><span id="kpi-budget">—</span><span class="currency-tag">MAD</span></div></article>
+        <article class="kpi-card"><div class="kpi-top"><span>Campagnes actives</span><span class="kpi-icon mint"><svg class="icon"><use href="#i-campaign"/></svg></span></div><strong class="kpi-number" id="kpi-active">—</strong><div class="kpi-bottom"><span id="kpi-active-caption">—</span><span class="live-label"><i></i>Simulation</span></div></article>
+      </section>
+
+      <div id="overview-content">
+        <section class="performance-grid" aria-label="Évolution et budget">
+          <article class="panel trend-panel"><div class="panel-heading"><div><h2>Évolution des performances</h2><p id="trend-subtitle">Impressions au fil des jours</p></div><div class="segmented" aria-label="Mesure du graphique"><button data-trend="impressions" class="selected" aria-pressed="true">Impressions</button><button data-trend="clicks" aria-pressed="false">Clics</button><button data-trend="spend" aria-pressed="false">Dépenses</button></div></div><div class="trend-summary"><strong id="trend-total">—</strong><span><i></i><span id="trend-measure">Impressions</span></span></div><div id="trend-chart"></div></article>
+          <article class="panel budget-panel"><div class="panel-heading"><div><h2>Répartition du budget</h2><p>Enveloppe média · Oct.–Déc. 2026</p></div><svg class="icon muted"><use href="#i-wallet"/></svg></div><div class="budget-total"><strong id="total-budget">138 000</strong><span>DH HT prévus</span></div><div class="budget-stacked" id="budget-stacked" aria-hidden="true"></div><div id="budget-legend"></div><div class="budget-foot"><span>Dépenses de la période</span><strong id="budget-spend">—</strong></div><p class="budget-note">Hors influence et frais de gestion.</p></article>
+        </section>
+
+        <section class="audience-section" aria-labelledby="audience-title"><div class="section-heading"><div><h2 id="audience-title">Votre audience<span class="section-dot">.</span></h2><p>Où votre campagne est vue, et par qui.</p></div><div class="audience-controls"><span>Répartition des</span><div class="select-wrap"><select id="audience-metric" aria-label="Mesure de l’audience"><option value="impressions">Impressions</option><option value="clicks">Clics</option></select></div></div></div><div id="audience-charts" class="audience-grid"></div><p class="audience-footnote">Répartitions simulées de la mesure sélectionnée, pas de visiteurs uniques. Chaque dimension comprend les données non renseignées.</p></section>
+      </div>
+
+      <section class="panel results-panel" aria-labelledby="results-title"><div class="panel-heading"><div><h2 id="results-title">Performances par plateforme</h2><p id="results-description">Le détail de vos résultats sur la période sélectionnée.</p></div><button class="text-link" id="show-campaigns">Toutes les campagnes <svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="table-scroll"><table id="results-table"><caption class="sr-only">Résultats simulés par plateforme</caption><thead id="results-head"></thead><tbody id="results-body"></tbody></table></div><div class="empty-state" id="empty-state" hidden><span class="empty-icon"><svg class="icon"><use href="#i-campaign"/></svg></span><h3>Aucune campagne en cours</h3><p id="empty-description">Les résultats apparaîtront ici dès le lancement d’une campagne.</p><button class="text-link" id="back-overview">Revenir au dashboard <svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="table-note" id="table-note"><svg class="icon"><use href="#i-help"/></svg>Les vues vidéo suivent la définition de chaque plateforme ; elles ne sont pas comparables directement.</div></section>
+
+      <section class="bottom-grid" id="bottom-content" aria-label="Campagne et accompagnement">
+        <article class="panel insight-panel"><div class="insight-heading"><span class="insight-icon"><svg class="icon"><use href="#i-spark"/></svg></span><div><h2>Le point Richmedia</h2><span>LECTURE DES DONNÉES DE DÉMONSTRATION</span></div></div><p id="insight-text"></p><div class="insight-footer"><span class="mini-avatar">r.</span><span>Votre équipe média, à vos côtés.</span></div></article>
+        <article class="panel campaign-preview"><div class="campaign-image"><img src="assets/yes-campaign.png" alt="Visuel de campagne YES avec une maman et son bébé"></div><div class="campaign-preview-copy"><span class="eyebrow">BIBLIOTHÈQUE DE CAMPAGNE</span><h2>De petits moments.<br>Une grande histoire.</h2><p>YES Baby Comfort · Notoriété</p><button class="text-link" id="view-creative">Voir le visuel du plan média <svg class="icon"><use href="#i-arrow"/></svg></button></div></article>
+      </section>
+      <footer class="main-footer"><span>© 2026 Richmedia <span class="footer-separator">/</span> We build digital growth.</span><span>YES Baby Comfort · Espace client</span></footer>
+      <p id="announcement" class="sr-only" aria-live="polite"></p>
+    </main>
+  </div>
+
+  <dialog id="dashboard-dialog" aria-labelledby="dialog-title"><div class="dialog-heading"><span class="dialog-kicker">RICHMEDIA · ESPACE CLIENT</span><button id="close-dialog" class="icon-button" aria-label="Fermer la fenêtre"><svg class="icon"><use href="#i-close"/></svg></button></div><h2 id="dialog-title"></h2><div id="dialog-content"></div><button class="primary-button" id="dialog-done">Fermer</button></dialog>
+</body>
+</html>

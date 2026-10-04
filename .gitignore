@@ -1,0 +1,14 @@
+.data/
+__pycache__/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.vercel/
+vendor/
+portal-config.local.js
+.DS_Store
+preview-*.png
+dashboard-desktop.png
+dashboard-audience.png

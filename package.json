@@ -1,0 +1,21 @@
+{
+  "name": "richmedia-yes-portal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:local": "node scripts/build.mjs --local",
+    "vendor": "node scripts/build.mjs --vendor-only",
+    "test": "node --test test-reporting.mjs tests/*.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

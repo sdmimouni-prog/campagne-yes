@@ -1,0 +1,24 @@
+-- Run manually in Supabase SQL Editor as the database administrator.
+-- First create the intended email/password account in Authentication > Users.
+-- The portal does not yet handle invitation/recovery URL callbacks.
+-- Copy that person's verified Auth user UUID; never use editable user_metadata.
+-- Replace the UUID below and run only the desired statement.
+
+-- Richmedia: may create, edit, archive, and consult the campaign history.
+insert into public.portal_memberships(user_id, client_id, role)
+values ('REPLACE_WITH_RICHMEDIA_AUTH_USER_UUID'::uuid, 'yes-baby', 'admin')
+on conflict (user_id, client_id) do update set role = excluded.role;
+
+-- YES: may read active campaigns; no writes and no audit/archive access.
+-- insert into public.portal_memberships(user_id, client_id, role)
+-- values ('REPLACE_WITH_YES_AUTH_USER_UUID'::uuid, 'yes-baby', 'viewer')
+-- on conflict (user_id, client_id) do update set role = excluded.role;
+
+-- Check the result (only visible to the database administrator).
+select m.user_id, u.email, m.client_id, m.role
+from public.portal_memberships m join auth.users u on u.id = m.user_id
+order by m.client_id, m.role, u.email;
+
+-- To immediately revoke access, delete only the intended membership.
+-- delete from public.portal_memberships
+-- where user_id = 'REPLACE_WITH_AUTH_USER_UUID'::uuid and client_id = 'yes-baby';

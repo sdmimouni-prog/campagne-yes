@@ -1,0 +1,80 @@
+.trend-visual{position:relative;width:100%;min-width:0;margin-top:9px}
+.trend-svg{display:block;width:100%;height:auto;overflow:visible}
+.trend-grid{stroke:#eeebf3;stroke-width:1;stroke-dasharray:3 4}
+.trend-label{font-size:11px;fill:#9993a4;font-family:inherit}
+.trend-point{cursor:crosshair;outline:none}
+.trend-guide{stroke:#ba9be8;stroke-width:1;stroke-dasharray:4 4;opacity:0}
+.trend-hit{fill:transparent;stroke:none}
+.trend-dot{fill:#fff;stroke:#7635ef;stroke-width:2.5;opacity:0}
+.trend-point-single .trend-dot{opacity:1}
+.trend-point:hover .trend-dot,.trend-point:focus .trend-dot,.trend-point:hover .trend-guide,.trend-point:focus .trend-guide{opacity:1}
+.trend-point:focus .trend-dot{stroke-width:4}
+.trend-tooltip{position:absolute;z-index:3;min-width:115px;padding:10px 13px;border-radius:9px;background:#211631;color:#fff;box-shadow:0 6px 20px #1f083822;pointer-events:none;transform:translate(-50%,-100%);font-size:11px;text-align:center;line-height:1.5}
+.trend-tooltip span{display:block;color:#d6c9e8;font-size:10px}
+.trend-tooltip strong{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.trend-tooltip[hidden]{display:none}
+.trend-footnote{display:flex;justify-content:space-between;gap:10px;color:#9a94a3;font-size:10px;margin:7px 0 0;padding-left:8px}
+.trend-footnote>span:first-child{display:flex;align-items:center;gap:7px;color:#6f637d}
+.trend-footnote i{width:7px;height:7px;display:inline-block;background:#7635ef;border-radius:50%}
+.audience-grid{display:grid;grid-template-columns:1.2fr .88fr 1.15fr;gap:20px;min-width:0}
+.audience-card{border:1px solid #eae7ee;border-radius:14px;background:#fff;min-width:0;padding:22px 23px 0;display:flex;flex-direction:column;overflow:hidden}
+.audience-card-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:21px}
+.audience-card-heading h3{font-size:13px;font-weight:650;letter-spacing:-.2px;margin:0;color:#29232f;line-height:1.4}
+.audience-card-heading p{font-size:10px;color:#9991a3;margin:6px 0 0;line-height:1.5}
+.audience-heading-icon{display:grid;place-items:center;flex:none;width:28px;height:28px;border:1px solid #eee9f4;border-radius:7px;color:#9a87b0}
+.audience-heading-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.audience-city-list{list-style:none;padding:0;margin:0 0 21px;display:grid;gap:17px;flex:1}
+.city-row-label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;line-height:1.3;margin-bottom:7px}
+.city-row-label>span{display:flex;align-items:center;gap:9px;color:#51465e;min-width:0}
+.city-row-label small{color:#b3aabb;font-size:8px;font-variant-numeric:tabular-nums;letter-spacing:.4px}
+.city-row-label strong{font-size:10px;color:#53455f;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.city-row-label em{font-size:9px;display:inline-block;min-width:44px;text-align:right;font-style:normal;color:#9990a4;font-weight:400;margin-left:6px}
+.audience-city-track{height:5px;border-radius:3px;background:#f6f3fa;overflow:hidden;margin-left:20px}
+.audience-city-track>span{display:block;height:100%;background:#7635ef;border-radius:3px}
+.audience-card-footer{margin:0 -23px;padding:13px 23px;border-top:1px solid #f0ecf5;background:#fdfcfe;color:#a49baa;font-size:8px;line-height:1.4;display:flex;align-items:center;gap:5px;margin-top:auto;min-height:39px}
+.audience-footer-dot{width:4px;height:4px;flex:none;border-radius:50%;background:#b5a4c7}
+.audience-donut-wrap{display:flex;justify-content:center;margin:-15px 0 -3px}
+.audience-donut{width:164px;height:164px;overflow:visible}
+.audience-donut-value{font-size:25px;font-weight:650;letter-spacing:-1px;fill:#332b3b;font-family:inherit;font-variant-numeric:tabular-nums}
+.audience-donut-label{font-size:10px;fill:#93859f;font-family:inherit}
+.audience-gender-legend{list-style:none;margin:2px 0 20px;padding:0;display:grid;gap:12px}
+.audience-gender-legend li{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10px}
+.audience-gender-legend li>span{display:flex;align-items:center;gap:7px;color:#776a83;white-space:nowrap}
+.audience-gender-legend i{display:block;width:7px;height:7px;border-radius:2px;flex:none}
+.audience-gender-legend strong{font-size:10px;color:#51465e;min-width:37px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.audience-gender-legend small{font-size:9px;color:#b1a5bb;font-variant-numeric:tabular-nums}
+.audience-age-chart{position:relative;margin-top:0;height:163px;margin-bottom:19px}
+.age-grid{position:absolute;inset:0 0 25px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.age-grid i{display:block;width:100%;height:0;border-top:1px dashed #efeaf6}
+.age-columns{display:flex;justify-content:space-between;gap:8px;height:100%;position:relative;isolation:isolate}
+.age-column{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;outline:none;cursor:default}
+.age-column-bar-space{position:relative;height:calc(100% - 25px);width:100%;display:flex;align-items:flex-end;justify-content:center}
+.age-column-bar{position:relative;background:#d9c6f6;width:70%;min-width:10px;max-width:30px;border-radius:4px 4px 0 0;transition:background .15s}
+.age-column-leading .age-column-bar{background:#7635ef}
+.age-column:hover .age-column-bar,.age-column:focus .age-column-bar{background:#925bed}
+.age-column-value{position:absolute;left:50%;top:-18px;transform:translateX(-50%);font-size:9px;line-height:12px;white-space:nowrap;font-weight:600;color:#9981b4;font-variant-numeric:tabular-nums}
+.age-column-leading .age-column-value{color:#7635ef}
+.age-column-value small{font-size:7px;font-weight:400;padding-left:1px}
+.age-column-label{height:25px;display:flex;align-items:flex-end;justify-content:center;font-size:8px;color:#95889f;white-space:nowrap;line-height:1.4}
+.age-column-leading .age-column-label{color:#7635ef;font-weight:600}
+.age-column-tooltip{visibility:hidden;position:absolute;left:50%;bottom:32px;transform:translateX(-50%);padding:7px 9px;color:#fff;background:#2d203d;border-radius:6px;font-size:10px;white-space:nowrap;z-index:2;pointer-events:none}
+.age-column:hover .age-column-tooltip,.age-column:focus .age-column-tooltip{visibility:visible}
+.age-column:focus-visible .age-column-bar{outline:2px solid #7635ef;outline-offset:3px}
+.audience-age-insight{display:flex;align-items:center;gap:9px;border:1px solid #ede5f8;background:#fbf8ff;border-radius:8px;padding:11px 10px;margin-bottom:21px}
+.age-insight-icon{display:grid;place-items:center;width:24px;height:24px;flex:none;background:#f1e8ff;border-radius:6px;color:#935aeb;font-size:16px}
+.audience-age-insight p{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.audience-age-insight strong{font-size:10px;font-weight:600;color:#704294}
+.audience-age-insight p>span{font-size:7px;color:#a094ac;line-height:1.4}
+.audience-age-insight b{font-size:12px;color:#8750c9;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:600}
+.chart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:224px;flex:1;color:#9b91a5;padding:24px 10px}
+.chart-empty strong{font-size:12px;color:#82738f;font-weight:500;line-height:1.4}
+.chart-empty p{font-size:10px;max-width:220px;line-height:1.6;margin:8px 0 0;color:#aaa0b3}
+.chart-empty-symbol{display:flex;gap:5px;align-items:flex-end;height:39px;margin-bottom:20px}
+.chart-empty-symbol i{width:7px;height:15px;background:#e8e0f3;border-radius:3px}
+.chart-empty-symbol i:nth-child(2){height:28px;background:#d9caed}.chart-empty-symbol i:nth-child(3){height:20px;background:#e1d5ef}.chart-empty-symbol i:nth-child(4){height:35px;background:#ceb6ec}
+@media(min-width:1600px){.audience-card{padding-top:25px}.audience-city-list{gap:21px}.audience-donut{width:180px;height:180px}.audience-age-chart{height:180px}}
+@media(max-width:1180px){.audience-grid{gap:14px;grid-template-columns:1.05fr .9fr 1.1fr}.audience-card{padding-left:16px;padding-right:16px}.audience-card-footer{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}.city-row-label em{min-width:32px;margin-left:3px}.audience-gender-legend small{display:none}.audience-card-heading h3{font-size:12px}.audience-heading-icon{width:25px;height:25px}.age-columns{gap:5px}.audience-age-insight{gap:6px;padding:9px 7px}.audience-age-insight p>span{font-size:6.5px}}
+@media(max-width:850px){.audience-grid{grid-template-columns:1fr 1fr}.audience-ages{grid-column:1/-1}.audience-age-chart{height:195px}.age-column-bar{max-width:50px}.age-column-label{font-size:10px}.age-column-value{font-size:11px}.audience-age-insight p>span{font-size:9px}.audience-card-heading h3{font-size:14px}.audience-card-heading p{font-size:11px}.audience-age-insight strong{font-size:12px}.audience-card-footer{font-size:9px}.city-row-label{font-size:12px}.audience-donut{width:170px;height:170px}.audience-gender-legend li{font-size:11px}.audience-gender-legend strong{font-size:11px}}
+@media(max-width:540px){.audience-grid{grid-template-columns:1fr;gap:14px}.audience-ages{grid-column:auto}.audience-card{padding:20px 20px 0}.audience-card-heading{margin-bottom:22px}.audience-card-footer{margin-left:-20px;margin-right:-20px;padding:13px 20px}.audience-city-list{gap:19px}.city-row-label strong{font-size:11px}.city-row-label em{font-size:10px;min-width:49px}.audience-gender-legend{max-width:280px;width:100%;align-self:center;gap:14px}.audience-gender-legend small{display:block}.audience-donut{width:184px;height:184px}.audience-age-chart{height:190px}.trend-label{font-size:13px}.trend-footnote{font-size:9px}.trend-tooltip{min-width:90px;padding:8px 10px}.trend-tooltip strong{font-size:12px}.trend-tooltip span{font-size:9px}}
+@media print{.trend-tooltip,.age-column-tooltip{display:none!important}.audience-grid{grid-template-columns:1.2fr .88fr 1.15fr;gap:10px}.audience-card{break-inside:avoid}.audience-ages{grid-column:auto}.audience-card-heading h3{font-size:11px}.audience-card-heading p,.audience-card-footer{font-size:8px}}
+.age-column-label{white-space:normal;text-align:center;line-height:1.2}
