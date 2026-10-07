@@ -44,6 +44,11 @@ function normalizeCampaign(record) {
     }
     normalized[metric] = value;
   }
+  normalized.reach = record.reach ?? null;
+  if (normalized.reach !== null && !validNumber(normalized.reach, true)) {
+    throw new Error('Le Reach enregistré contient une valeur invalide.');
+  }
+  normalized.frequency = normalized.reach > 0 ? record.impressions / normalized.reach : null;
   normalized.ctr = record.impressions > 0 ? record.clicks / record.impressions * 100 : null;
   return Object.freeze(normalized);
 }
@@ -131,6 +136,9 @@ function aggregateMetrics(rows) {
         ? roundMoney(rows.reduce((sum, row) => sum + Math.round(row.spend * 100), 0) / 100)
         : rows.reduce((sum, row) => sum + row[metric], 0);
   }
+  // Unique audiences cannot be added across campaigns without deduplication.
+  metrics.reach = rows.length === 1 ? rows[0].reach : null;
+  metrics.frequency = metrics.reach > 0 ? metrics.impressions / metrics.reach : null;
   return metrics;
 }
 

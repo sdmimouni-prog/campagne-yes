@@ -140,3 +140,17 @@ test('a newer refresh wins and an invalidated page guard prevents installation',
   await assert.rejects(reporting.loadReportingData(async () => ({ mode: 'manual', campaigns: [record('denied')] }), { isCurrent: () => false }), { code: 'STALE_REPORTING_LOAD' });
   assert.equal(reporting.CAMPAIGNS[0].id, 'latest');
 });
+
+ test('reach and frequency preserve missing data and avoid adding unique audiences', () => {
+  install([record('a', { reach: 400 })]);
+  assert.equal(reporting.getSummary().byPlatform[0].reach, 400);
+  assert.equal(reporting.getSummary().byPlatform[0].frequency, 2.5);
+  install([record('a', { reach: 400 }), record('b', { reach: 200 })]);
+  assert.equal(reporting.getSummary().byPlatform[0].reach, null);
+  assert.equal(reporting.getSummary().byPlatform[0].frequency, null);
+  install([record('missing')]);
+  assert.equal(reporting.getSummary().totals.reach, null);
+  install([record('zero', { reach: 0 })]);
+  assert.equal(reporting.getSummary().totals.reach, 0);
+  assert.equal(reporting.getSummary().totals.frequency, null);
+});
