@@ -3,7 +3,7 @@ import { getCampaigns, saveCampaign, requireAccess, getPortalMode, signOut, onSe
 const $ = id => document.getElementById(id);
 const form = $('campaign-form');
 const names = {facebook:'Facebook',instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok',display:'Display'};
-const integers = ['impressions','clicks','views','trueviews','interactions'];
+const integers = ['impressions','reach','clicks','views','trueviews','interactions'];
 const numeric = ['budget','spend',...integers];
 const fields = ['channel','name','start','end',...numeric];
 const number = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2});
@@ -35,9 +35,11 @@ function setBusy(value) {
   $('save-button').innerHTML=value?'Enregistrement…':`${editing?'Enregistrer les modifications':'Enregistrer la campagne'} <span aria-hidden="true">↗</span>`;
   document.querySelectorAll('[data-edit],[data-archive],[data-restore]').forEach(el=>el.disabled=value||!ready);
 }
-function updateCTR() {
-  const impressions=$('impressions').valueAsNumber, clicks=$('clicks').valueAsNumber;
+function updateCalculatedMetrics() {
+  const impressions=$('impressions').valueAsNumber, clicks=$('clicks').valueAsNumber, reach=$('reach').valueAsNumber;
   $('ctr').value=ctr(clicks,impressions);
+  const frequency=Number.isFinite(impressions)&&impressions>=0&&Number.isFinite(reach)&&reach>0?impressions/reach:null;
+  $('frequency').value=frequency==null?'—':`${percent.format(frequency)} fois`;
 }
 function clearValidation() {fields.forEach(name=>form.elements.namedItem(name).setCustomValidity(''));}
 function resetForm() {
@@ -46,7 +48,7 @@ function resetForm() {
   $('start').value=localDate.slice(0,8)+'01';$('end').value=localDate;
   $('form-title').innerHTML='Nouvelle campagne<span>.</span>';
   $('form-intro').textContent='Renseignez les résultats cumulés sur la période choisie.';
-  notice('');updateCTR();setBusy(false);
+  notice('');updateCalculatedMetrics();setBusy(false);
 }
 function canDiscard() {return !dirty||window.confirm('Abandonner les modifications non enregistrées ?');}
 function edit(record) {
@@ -56,7 +58,7 @@ function edit(record) {
   dirty=false;
   $('form-title').innerHTML='Modifier la campagne<span>.</span>';
   $('form-intro').textContent='Modifiez les informations et les résultats de cette campagne, puis enregistrez vos modifications.';
-  notice('');updateCTR();setBusy(false);
+  notice('');updateCalculatedMetrics();setBusy(false);
   $('campaign-name').focus({preventScroll:true});
   document.querySelector('.editor-card').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
 }
@@ -82,7 +84,7 @@ form.addEventListener('input',event=>{
   dirty=true;notice('');
   if(event.target.setCustomValidity)event.target.setCustomValidity('');
   if(['start','end'].includes(event.target.name))$('end').setCustomValidity('');
-  updateCTR();
+  updateCalculatedMetrics();
 });
 form.addEventListener('change',()=>{dirty=true;});
 form.addEventListener('submit',async event=>{
@@ -145,7 +147,7 @@ window.addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefa
 function denyAccess(error) {
   accessGeneration+=1;
   ready=false;campaigns=[];editing=null;pendingArchive=null;dirty=false;
-  form.reset();updateCTR();renderList(null);setBusy(false);
+  form.reset();updateCalculatedMetrics();renderList(null);setBusy(false);
   $('archive-dialog').close();
   document.querySelector('.editor-card').hidden=true;
   document.querySelector('.campaigns-card').hidden=true;

@@ -85,7 +85,9 @@ class CampaignAPITest(unittest.TestCase):
         cases = [{"budget": -1}, {"budget": 1.001}, {"spend": "10"}, {"impressions": 0.5},
                  {"clicks": True}, {"clicks": None}, {"views": -1}, {"trueviews": "4"},
                  {"clicks": 10 ** 500},
-                 {"interactions": 9_000_000_000_001}, {"channel": "meta"}, {"channel": []},
+                 {"interactions": 9_000_000_000_001}, {"reach": -1}, {"reach": 0.5},
+                 {"reach": True}, {"reach": "25"}, {"reach": 9_000_000_000_001},
+                 {"channel": "meta"}, {"channel": []},
                  {"name": " "}, {"name": "x" * 161}, {"start": "2026-02-30"},
                  {"end": "2026-01-01"}, {"status": []}]
         for changes in cases:
@@ -98,6 +100,46 @@ class CampaignAPITest(unittest.TestCase):
             self.assertEqual(self.request("POST", raw=raw)[0], 400)
         self.assertEqual(self.request("POST", data=[])[0], 400)
         self.assertEqual(self.request("GET")[1]["mode"], "demo")
+
+    def test_reach_frequency_persist_with_legacy_edits_archive_restore_and_null(self):
+        status, created = self.request("POST", data=self.campaign(reach=600, frequency=999))
+        self.assertEqual(status, 201)
+        record = created["campaign"]
+        self.assertEqual(record["reach"], 600)
+        self.assertEqual(record["frequency"], 1.666667)
+        path = "/api/campaigns/" + record["id"]
+        status, edited = self.request("PUT", path, self.campaign(impressions=2000, revision=1))
+        self.assertEqual(status, 200)
+        self.assertEqual(edited["campaign"]["reach"], 600)  # Older form omits reach.
+        self.assertEqual(edited["campaign"]["frequency"], 3.333333)
+        status, archived = self.request("POST", path + "/archive", {"revision": 2})
+        self.assertEqual(status, 200)
+        self.assertEqual(archived["campaign"]["reach"], 600)
+        self.assertEqual(CampaignStore(self.root / ".data").list()["campaigns"], [archived["campaign"]])
+        status, restored = self.request("PUT", path, self.campaign(revision=3, reach=0, frequency=999))
+        self.assertEqual(status, 200)
+        self.assertEqual(restored["campaign"]["status"], "active")
+        self.assertEqual(restored["campaign"]["reach"], 0)
+        self.assertIsNone(restored["campaign"]["frequency"])
+        status, unknown = self.request("PUT", path, self.campaign(revision=4, reach=None))
+        self.assertEqual(status, 200)
+        self.assertIsNone(unknown["campaign"]["reach"])
+        self.assertIsNone(unknown["campaign"]["frequency"])
+        status, zero_impressions = self.request("PUT", path, self.campaign(revision=5, reach=50, impressions=0))
+        self.assertEqual(status, 200)
+        self.assertEqual(zero_impressions["campaign"]["frequency"], 0)
+
+    def test_legacy_records_have_unknown_reach_without_rewriting_storage(self):
+        record = self.request("POST", data=self.campaign())[1]["campaign"]
+        self.assertIsNone(record.pop("reach"))
+        self.assertIsNone(record.pop("frequency"))
+        store = CampaignStore(self.root / ".data")
+        with store.connect() as conn:
+            conn.execute("UPDATE campaigns SET record = ? WHERE id = ?", (json.dumps(record), record["id"]))
+        loaded = self.request("GET")[1]["campaigns"][0]
+        self.assertEqual(loaded, {**record, "reach": None, "frequency": None})
+        with store.connect() as conn:
+            self.assertEqual(json.loads(conn.execute("SELECT record FROM campaigns").fetchone()[0]), record)
 
     def test_request_boundary_and_private_files(self):
         self.assertEqual(self.request("GET", "/")[0], 200)

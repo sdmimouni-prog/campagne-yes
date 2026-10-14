@@ -1,12 +1,13 @@
 # Base partagée Supabase
 
-Cette migration définit le stockage du portail. Elle ne crée ni projet Supabase, ni comptes, ni mots de passe et n'est pas appliquée automatiquement à une base distante.
+Les migrations définissent le stockage du portail. Elles ne créent ni projet Supabase, ni comptes, ni mots de passe et ne sont pas appliquées automatiquement à une base distante.
 
 ## État de la production
 
 Le projet [Supabase `jfsxvrfpaxacxbpemlgo`](https://supabase.com/dashboard/project/jfsxvrfpaxacxbpemlgo) est relié au portail [campagne-yes-ten.vercel.app](https://campagne-yes-ten.vercel.app), déployé sur Vercel en mode Supabase. Le premier déploiement opérationnel utilise le commit `8ad996c`.
 
 - La migration `migrations/202610040001_portal.sql` a été appliquée avec succès dans le SQL Editor.
+- La migration additive `migrations/202610140001_campaign_reach_frequency.sql` a été appliquée en production le 14 octobre 2026 après la migration initiale. La lecture authentifiée via `portal_list_campaigns` a confirmé les champs `reach` et `frequency` sur les 17 campagnes existantes, sans modification de leurs chiffres.
 - Les 11 campagnes ont été importées : 4 YouTube, 2 Facebook, 2 Instagram et 3 TikTok. Les UUID et les horodatages `created_at` et `updated_at` d'origine ont été conservés. Toutes les campagnes sont actives, avec les montants et compteurs à zéro, sur la période du 01/10/2026 au 31/12/2026.
 - Les inscriptions publiques et les connexions anonymes sont désactivées. La Site URL est `https://campagne-yes-ten.vercel.app`.
 - Les trois variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID` sont configurées dans l'environnement **Production** de Vercel.
@@ -21,10 +22,10 @@ Le fichier source `portal-config.js` reste en mode local pour conserver le proto
 
 ## Installation d'un nouvel environnement
 
-Ces étapes décrivent une installation complète. Pour la production ci-dessus, poursuivre uniquement la validation authentifiée ; ne pas réappliquer la migration ni réimporter les campagnes initiales.
+Ces étapes décrivent une installation complète. Pour la production ci-dessus, ne pas réappliquer la migration initiale ni réimporter les campagnes. Appliquer uniquement les migrations suivantes encore manquantes, puis poursuivre la validation authentifiée.
 
 1. Créer le projet Supabase destiné au portail.
-2. Exécuter `migrations/202610040001_portal.sql` dans le SQL Editor avec le propriétaire de la base, ou avec le mécanisme de migrations Supabase. Ce script transactionnel s'exécute une fois.
+2. Exécuter `migrations/202610040001_portal.sql`, puis `migrations/202610140001_campaign_reach_frequency.sql` dans le SQL Editor avec le propriétaire de la base, ou avec le mécanisme de migrations Supabase. Chaque script transactionnel s'exécute une fois, dans cet ordre.
 3. Dans Authentication, désactiver les inscriptions publiques et les connexions anonymes. Configurer l'URL du site et les URL de retour autorisées avec le domaine du portail.
 4. Créer les comptes Richmedia et YES dans Authentication avec un accès e-mail/mot de passe opérationnel. Attribuer à chacun sa ligne dans `portal_memberships` en adaptant `provision-membership.sql.example`. Les UUID doivent venir de vrais comptes Auth. Aucun premier utilisateur ne devient administrateur automatiquement. L'administrateur configure les mots de passe directement dans Supabase ; ne pas les mettre dans ce dépôt ou dans la conversation. Le portail ne traite pas encore les liens d'invitation ou de récupération de mot de passe : ne pas compter sur ces liens pour ouvrir le premier accès.
 5. Renseigner la configuration de l'interface avec l'URL du projet, sa clé **publishable** (ou l'ancienne clé **anon**) et l'identifiant client `yes-baby`. Une clé `service_role` ou `secret` ne doit jamais se trouver dans le navigateur ni dans GitHub.
@@ -37,6 +38,14 @@ Pour initialiser un nouvel environnement à zéro après la migration du schéma
 Pour Vercel, les variables sont `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `PORTAL_CLIENT_ID=yes-baby`. La clé se trouve dans les réglages API du projet ; choisir une clé **Publishable**, ou l'ancienne clé **anon**, et jamais une clé privilégiée. Le [README du portail](../README.md) détaille le build et les réglages Vercel. Aucun mot de passe PostgreSQL ni chaîne de connexion à la base n'est requis dans Vercel pour cette version.
 
 Une fois les comptes opérationnels, pour activer Supabase sur l'aperçu local, remplacer les valeurs de `portal-config.js` par `backend: 'supabase'`, l'URL, la clé publique et `clientId: 'yes-baby'`, puis exécuter `npm ci` et `npm run vendor`. Cette activation n'importe pas la base SQLite locale et ne synchronise pas les deux stockages. Cette bascule locale n'a pas été effectuée ; le build Vercel génère déjà sa propre configuration Supabase.
+
+## Mise à jour Reach et fréquence
+
+Sur une base ayant déjà reçu la migration initiale, appliquer seulement `migrations/202610140001_campaign_reach_frequency.sql`. Cette migration ajoute `reach` et la colonne calculée `frequency`, puis adapte la validation et les RPC sans changer les droits d'accès. Elle ne réinitialise pas les chiffres et n'exige aucun nouvel import. Les anciennes campagnes reçoivent un Reach `null` et une fréquence `null`.
+
+`reach` est facultatif, entier et positif ou nul. `frequency` vaut `impressions / reach` si le Reach est strictement positif ; sinon elle reste `null`. Le formulaire recalcule cette fréquence pendant la saisie, et PostgreSQL la calcule indépendamment à l'enregistrement. Une fréquence envoyée par le navigateur ne remplace pas le calcul serveur. Une modification provenant d'un ancien formulaire qui omet `reach` conserve le Reach enregistré ; transmettre explicitement `reach: null` efface la mesure.
+
+Le reporting expose ces mesures par campagne. Sans déduplication des audiences, il n'additionne pas les Reach entre campagnes et ne calcule pas de fréquence globale sur plusieurs campagnes. Ces agrégats restent inconnus.
 
 ## Accès et données
 
@@ -60,7 +69,7 @@ La liste ne revient jamais à des chiffres de démonstration : une base Supabase
 - Erreur métier : `{error, status, fields?, current?}` ; l'interface doit traiter cette enveloppe même si le transport RPC retourne HTTP 200.
 - Refus d'accès : erreur PostgreSQL `42501`, à traiter comme un accès interdit.
 
-Champs d'une campagne côté interface : `id`, `revision`, `channel`, `name`, `start`, `end`, `budget`, `spend`, `impressions`, `clicks`, `views`, `trueviews`, `interactions`, `ctr`, `status`, `source`, `createdAt`, `updatedAt`. Les champs JSON `id`, `revision` à la création, `ctr`, `source`, `client_id`, `createdAt` et `updatedAt` ne permettent pas de contourner les valeurs gérées par le serveur.
+Champs d'une campagne côté interface : `id`, `revision`, `channel`, `name`, `start`, `end`, `budget`, `spend`, `impressions`, `reach`, `frequency`, `clicks`, `views`, `trueviews`, `interactions`, `ctr`, `status`, `source`, `createdAt`, `updatedAt`. Les champs JSON `id`, `revision` à la création, `ctr`, `frequency`, `source`, `client_id`, `createdAt` et `updatedAt` ne permettent pas de contourner les valeurs gérées par le serveur.
 
 La limite de 9 000 milliards maintient les compteurs dans la plage des entiers exacts JavaScript. Seuls les nombres JSON sont acceptés, pas les chaînes numériques ni les booléens. Les montants ont au maximum deux décimales ; les compteurs sont entiers ; les dates ISO sont validées et ordonnées.
 

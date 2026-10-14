@@ -17,6 +17,7 @@ VIEWER = "22222222-2222-4222-8222-222222222222"
 OUTSIDER = "33333333-3333-4333-8333-333333333333"
 OTHER_ADMIN = "44444444-4444-4444-8444-444444444444"
 SQL_FILE = Path(__file__).resolve().parents[1] / "migrations/202610040001_portal.sql"
+REACH_MIGRATION = SQL_FILE.parent / "202610140001_campaign_reach_frequency.sql"
 BASE = {
     "channel": "facebook", "name": "YES · Octobre", "start": "2026-10-01",
     "end": "2026-10-31", "budget": 10000.25, "impressions": 4000, "clicks": 20,
@@ -67,6 +68,15 @@ class DatabaseTests(unittest.TestCase):
               grant execute on function auth.uid() to anon, authenticated, service_role;
             """)
             cls.run_sql(SQL_FILE.read_text())
+            # Upgrade a populated database, as production already contains campaigns.
+            cls.run_sql("""
+              insert into public.portal_campaigns(client_id,channel,name,start_date,end_date,budget,impressions,clicks)
+              values ('yes-baby','facebook','Before migration','2026-10-01','2026-10-31',125,200,10);
+            """)
+            cls.before_upgrade = json.loads(cls.run_sql("select portal_private.campaign_json(c) from public.portal_campaigns c;"))
+            cls.run_sql(REACH_MIGRATION.read_text())
+            cls.after_upgrade = json.loads(cls.run_sql("select portal_private.campaign_json(c) from public.portal_campaigns c;"))
+            cls.upgrade_history_count = cls.run_sql("select count(*) from public.portal_campaign_history;")
             cls.run_sql(f"""
               insert into auth.users(id, email) values
                 ('{ADMIN}', 'admin@example.invalid'), ('{VIEWER}', 'viewer@example.invalid'),
@@ -128,6 +138,33 @@ class DatabaseTests(unittest.TestCase):
     def test_empty_live_database_has_no_demo(self):
         self.assertEqual(self.listing(), {"mode": "manual", "campaigns": [], "updatedAt": None})
 
+    def test_additive_migration_preserves_existing_records_and_audit(self):
+        self.assertEqual(self.after_upgrade, {**self.before_upgrade, "reach": None, "frequency": None})
+        self.assertEqual(self.upgrade_history_count, "1")
+
+    def test_reach_frequency_storage_and_backward_compatible_updates(self):
+        c = self.save({**BASE, "reach": 2400, "frequency": 999})["campaign"]
+        self.assertEqual(c["reach"], 2400)
+        self.assertEqual(c["frequency"], 1.666667)
+        self.assertEqual(self.listing(user=VIEWER)["campaigns"], [c])
+        legacy_edit = self.save({**BASE, "revision": 1, "impressions": 8000}, c["id"])["campaign"]
+        self.assertEqual(legacy_edit["reach"], 2400)
+        self.assertEqual(legacy_edit["frequency"], 3.333333)
+        archived = self.save({"revision": 2}, c["id"], archive=True)["campaign"]
+        self.assertEqual(archived["reach"], 2400)
+        self.assertEqual(archived["frequency"], 3.333333)
+        self.assertEqual(self.listing(user=VIEWER)["campaigns"], [])
+        restored = self.save({**BASE, "revision": 3, "reach": 0, "frequency": 999}, c["id"])["campaign"]
+        self.assertEqual(restored["reach"], 0)
+        self.assertIsNone(restored["frequency"])
+        unknown = self.save({**BASE, "revision": 4, "reach": None}, c["id"])["campaign"]
+        self.assertIsNone(unknown["reach"])
+        self.assertIsNone(unknown["frequency"])
+        zero_impressions = self.save({**BASE, "revision": 5, "reach": 20, "impressions": 0}, c["id"])["campaign"]
+        self.assertEqual(zero_impressions["frequency"], 0)
+        snapshot = json.loads(self.run_sql("select record from public.portal_campaign_history order by id desc limit 1;"))
+        self.assertEqual(snapshot, zero_impressions)
+
     def test_create_replace_and_null_fields_with_atomic_audit(self):
         original = self.save({**BASE, "name": "  YES · Octobre\t", "ctr": 999, "source": "fake", "revision": 99})
         c = original["campaign"]
@@ -135,7 +172,7 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(c["ctr"], 0.5)
         self.assertEqual(c["revision"], 1)
         self.assertEqual(c["source"], "manual")
-        for field in ("spend", "views", "trueviews", "interactions"):
+        for field in ("spend", "views", "trueviews", "interactions", "reach", "frequency"):
             self.assertIsNone(c[field])
         updated = self.save({**BASE, "revision": 1, "impressions": 5000, "clicks": 25,
                              "spend": 150.75, "views": 0, "trueviews": 300, "interactions": 42}, c["id"])["campaign"]
@@ -162,6 +199,7 @@ class DatabaseTests(unittest.TestCase):
             ("budget", 10.001), ("spend", -1), ("impressions", 1.25), ("clicks", False),
             ("views", "5"), ("views", 9000000000001), ("interactions", -1),
             ("trueviews", 0.3), ("status", None), ("status", "paused"),
+            ("reach", -1), ("reach", 0.5), ("reach", True), ("reach", "25"), ("reach", 9000000000001),
         ]
         for field, value in invalid:
             with self.subTest(field=field, value=value):
@@ -247,6 +285,9 @@ class DatabaseTests(unittest.TestCase):
         self.run_sql(f"update public.portal_campaigns set spend = 'NaN'::numeric where id={literal(c['id'])};", expected_error="23514")
         self.run_sql(f"update public.portal_campaigns set budget = 0.001 where id={literal(c['id'])};", expected_error="23514")
         self.run_sql(f"update public.portal_campaigns set clicks = -1 where id={literal(c['id'])};", expected_error="23514")
+        self.run_sql(f"update public.portal_campaigns set reach = -1 where id={literal(c['id'])};", expected_error="23514")
+        self.run_sql(f"update public.portal_campaigns set reach = 9000000000001 where id={literal(c['id'])};", expected_error="23514")
+        self.run_sql(f"update public.portal_campaigns set frequency = 999 where id={literal(c['id'])};", expected_error="428C9")
         self.assertEqual(self.listing()["campaigns"], [c])
 
 

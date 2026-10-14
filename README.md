@@ -8,6 +8,8 @@ Le portail de production est déployé sur [campagne-yes-ten.vercel.app](https:/
 
 **État vérifié de la production :** le projet Supabase `jfsxvrfpaxacxbpemlgo` est configuré, la migration SQL a été appliquée et les 11 campagnes locales ont été importées avec leurs identifiants et leurs dates de création et de modification d'origine. Toutes sont actives, avec les montants et compteurs à zéro. Les trois variables Vercel sont définies pour l'environnement **Production**. Les inscriptions publiques et les connexions anonymes sont désactivées ; la Site URL Supabase correspond au domaine de production. Les lectures anonymes de la table des campagnes et de la RPC de liste ont été refusées avec HTTP `401` et le code PostgreSQL `42501`.
 
+La [migration additive `202610140001`](supabase/migrations/202610140001_campaign_reach_frequency.sql) a été appliquée en production le 14 octobre 2026 après la migration initiale. L'API authentifiée expose bien `reach` et `frequency` sur les 17 campagnes présentes lors de la vérification. Elle conserve les campagnes existantes, dont le Reach reste inconnu jusqu'à sa saisie.
+
 Le compte SIPAT est créé dans Auth. Le 14 octobre 2026, à la demande explicite de l'utilisateur et après sa confirmation, son rôle pour `yes-baby` dans `portal_memberships` a été changé de `viewer` à `admin`. L'enregistrement a été confirmé dans Supabase. Ce rôle autorise l'ajout, la modification, la suppression restaurable et la restauration des campagnes. Le back-office déployé au commit `66d8029` présente l'action « Supprimer » comme une suppression restaurable.
 
 La connexion avec les identifiants SIPAT existants ouvre désormais le back-office : les 11 campagnes, le formulaire d'ajout et les actions « Modifier » et « Supprimer » sont accessibles. L'ouverture du formulaire prérempli de la campagne TopView a été vérifiée. Aucune campagne n'a été modifiée pendant ce contrôle ; les opérations d'écriture restent à vérifier en production. Voir le [guide Supabase](supabase/README.md).
@@ -18,7 +20,7 @@ Le fichier source `portal-config.js` conserve volontairement le mode local pour 
 
 Les étapes suivantes servent à installer un autre environnement ; elles ne sont pas à répéter sur la production déjà configurée.
 
-1. Créer le projet, appliquer le [script SQL](supabase/migrations/202610040001_portal.sql), importer les campagnes souhaitées, puis créer les comptes et leurs rôles selon le [guide Supabase](supabase/README.md).
+1. Créer le projet, appliquer le [script SQL initial](supabase/migrations/202610040001_portal.sql) puis la [migration Reach et fréquence](supabase/migrations/202610140001_campaign_reach_frequency.sql), importer les campagnes souhaitées, puis créer les comptes et leurs rôles selon le [guide Supabase](supabase/README.md).
 2. Installer les dépendances avec `npm ci` (Node.js 22 ou supérieur).
 3. Importer le dépôt `sdmimouni-prog/campagne-yes` dans Vercel. Le portail est à la racine du dépôt : conserver **Root Directory** sur `.`. Framework : **Other** ; commande de build : `npm run build` ; dossier publié : `dist`. Le fichier `vercel.json` définit déjà les deux derniers réglages.
 4. Dans les variables Vercel, renseigner `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID=yes-baby`. Utiliser les valeurs du projet voulu pour l'environnement de production ; un environnement de test devrait avoir son propre projet et ses propres comptes.
@@ -44,9 +46,11 @@ La gestion est accessible par son lien direct, sans entrée dans le menu client.
 
 ## Saisie des campagnes
 
-Canaux : Facebook, Instagram, YouTube, TikTok et Display. Le formulaire comprend le nom, la période des résultats, le budget (MAD), les impressions, les clics, le CTR calculé, les vues vidéo, les TrueViews et les interactions. Les dépenses réelles sont facultatives et distinctes du budget.
+Canaux : Facebook, Instagram, YouTube, TikTok et Display. Le formulaire comprend le nom, la période des résultats, le budget (MAD), les impressions, le Reach, la fréquence calculée, les clics, le CTR calculé, les vues vidéo, les TrueViews et les interactions. Les dépenses réelles sont facultatives et distinctes du budget.
 
 Une campagne contient les **totaux cumulés sur la période indiquée**. Une modification remplace les anciens totaux, sans les additionner. Le CTR vaut `clics / impressions × 100` ; il est indéterminé en base quand les impressions sont nulles. Pour une campagne initialisée explicitement à zéro clic et zéro impression, l'interface affiche `0,00 %` et exporte `0` par convention de présentation. Un champ inconnu ou un calcul impossible reste « — ». Une donnée facultative vide reste inconnue, contrairement à un zéro réellement saisi. Les agrégats incomplets restent inconnus.
+
+Le **Reach** est une saisie facultative du nombre entier de personnes uniques touchées sur la période. La **fréquence** est calculée automatiquement : `impressions / Reach`, en affichages par personne. Elle reste « — » si le Reach est vide ou égal à zéro ; elle ne se saisit pas séparément. Les valeurs sont disponibles par campagne dans les tableaux, détails et CSV. Les audiences uniques peuvent se chevaucher : le Reach et la fréquence ne sont ni additionnés ni moyennés entre campagnes. Un agrégat comprenant plusieurs campagnes les laisse inconnus ; sélectionner une seule campagne permet de consulter ses propres valeurs.
 
 La liste permet de modifier, supprimer et restaurer. « Supprimer » archive la campagne sans effacer son historique ; elle est alors exclue du dashboard et peut être restaurée. Les mises à jour utilisent une version de chaque fiche : deux fenêtres ne peuvent pas écraser silencieusement leurs modifications. Le dashboard se rafraîchit à son ouverture, au retour sur l’onglet et lors d’une sauvegarde depuis un autre onglet de la même origine.
 

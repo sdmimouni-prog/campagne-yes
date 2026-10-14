@@ -141,7 +141,7 @@ test('a newer refresh wins and an invalidated page guard prevents installation',
   assert.equal(reporting.CAMPAIGNS[0].id, 'latest');
 });
 
- test('reach and frequency preserve missing data and avoid adding unique audiences', () => {
+test('reach and frequency preserve missing data and avoid adding unique audiences', () => {
   install([record('a', { reach: 400 })]);
   assert.equal(reporting.getSummary().byPlatform[0].reach, 400);
   assert.equal(reporting.getSummary().byPlatform[0].frequency, 2.5);
@@ -153,4 +153,46 @@ test('a newer refresh wins and an invalidated page guard prevents installation',
   install([record('zero', { reach: 0 })]);
   assert.equal(reporting.getSummary().totals.reach, 0);
   assert.equal(reporting.getSummary().totals.frequency, null);
+});
+
+test('frequency follows the latest impressions and reach instead of a supplied frequency', () => {
+  install([record('updated', { reach: 400, frequency: 999 })]);
+  assert.equal(reporting.CAMPAIGNS[0].frequency, 2.5);
+  assert.equal(reporting.getSummary().rows[0].frequency, 2.5);
+  install([record('updated', { impressions: 1200, reach: 300, frequency: 999 })]);
+  const updated = reporting.getSummary();
+  assert.equal(updated.rows[0].frequency, 4);
+  assert.equal(updated.totals.frequency, 4);
+  assert.equal(updated.byPlatform[0].frequency, 4);
+  install([record('updated', { reach: null, frequency: 999 })]);
+  assert.equal(reporting.getSummary().rows[0].frequency, null);
+  assert.equal(reporting.getSummary().totals.frequency, null);
+});
+
+test('selecting one campaign restores its unique reach without combining other campaigns', () => {
+  install([
+    record('fb', { reach: 400 }),
+    record('ig', { channel: 'instagram', impressions: 1800, reach: 600 }),
+    record('youtube', { channel: 'youtube', reach: 500 }),
+  ]);
+  assert.equal(reporting.getSummary().totals.reach, null);
+  assert.equal(reporting.getSummary({ platform: 'meta' }).totals.frequency, null);
+  const selected = reporting.getSummary({ platform: 'meta', campaign: 'ig' });
+  assert.equal(selected.rows.length, 1);
+  assert.equal(selected.rows[0].reach, 600);
+  assert.equal(selected.rows[0].frequency, 3);
+  assert.equal(selected.totals.reach, 600);
+  assert.equal(selected.totals.frequency, 3);
+  assert.equal(selected.byPlatform[0].reach, 600);
+  assert.equal(selected.byPlatform[0].frequency, 3);
+});
+
+test('invalid reach cannot partially replace previously loaded campaign data', () => {
+  install([record('known', { reach: 400 })]);
+  for (const reach of [-1, 0.5, '400', Infinity, 9000000000001]) {
+    assert.throws(() => install([record('valid-first'), record('invalid', { reach })]), /Reach.*invalide/);
+    assert.deepEqual(reporting.CAMPAIGNS.map(campaign => campaign.id), ['known']);
+    assert.equal(reporting.getSummary().totals.reach, 400);
+    assert.equal(reporting.getSummary().totals.frequency, 2.5);
+  }
 });

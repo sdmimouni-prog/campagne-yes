@@ -13,7 +13,7 @@ import re
 import sqlite3
 import uuid
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -59,7 +59,7 @@ def validate_campaign(payload):
             errors[field] = "Renseignez une date valide au format AAAA-MM-JJ."
     if "start" in result and "end" in result and result["start"] > result["end"]:
         errors["end"] = "La fin doit être égale ou postérieure au début."
-    for field in ("budget", "spend", "impressions", "clicks", "views", "trueviews", "interactions"):
+    for field in ("budget", "spend", "impressions", "reach", "clicks", "views", "trueviews", "interactions"):
         value = payload.get(field)
         if value is None and field not in ("budget", "impressions", "clicks"):
             result[field] = None
@@ -84,8 +84,25 @@ def validate_campaign(payload):
     if errors:
         raise APIError(422, "Vérifiez les champs du formulaire.", fields=errors)
     result["ctr"] = round(result["clicks"] / result["impressions"] * 100, 6) if result["impressions"] else None
+    result["frequency"] = campaign_frequency(result)
     result["source"] = "manual"
     return result
+
+
+def campaign_frequency(record):
+    reach = record.get("reach")
+    if reach is None or reach <= 0:
+        return None
+    return float((Decimal(record["impressions"]) / Decimal(reach)).quantize(
+        Decimal("0.000001"), rounding=ROUND_HALF_UP))
+
+
+def campaign_record(encoded):
+    """Expose added metrics for older JSON records without inventing a reach."""
+    record = json.loads(encoded)
+    record.setdefault("reach", None)
+    record["frequency"] = campaign_frequency(record)
+    return record
 
 
 def validate_revision(payload):
@@ -121,7 +138,7 @@ class CampaignStore:
     def list(self):
         with self.connect() as conn:
             conn.execute("BEGIN")
-            records = [json.loads(row[0]) for row in conn.execute("SELECT record FROM campaigns ORDER BY rowid DESC")]
+            records = [campaign_record(row[0]) for row in conn.execute("SELECT record FROM campaigns ORDER BY rowid DESC")]
             metadata = dict(conn.execute("SELECT key, value FROM metadata"))
         return {"mode": metadata.get("mode", "demo"), "campaigns": records, "updatedAt": metadata.get("updatedAt")}
 
@@ -135,11 +152,15 @@ class CampaignStore:
                 row = conn.execute("SELECT record FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
                 if not row:
                     raise APIError(404, "Campagne introuvable.")
-                current = json.loads(row[0])
+                current = campaign_record(row[0])
                 if current["revision"] != revision:
                     raise APIError(409, "Cette campagne a été modifiée. Rechargez sa dernière version.", current=current)
                 if archive:
                     record = {**current, "status": "archived"}
+                elif "reach" not in payload:
+                    # An older open editor cannot clear a metric it does not know about.
+                    record["reach"] = current["reach"]
+                    record["frequency"] = campaign_frequency(record)
                 record.update(id=campaign_id, revision=revision + 1, createdAt=current["createdAt"], updatedAt=now)
             else:
                 record.update(id=str(uuid.uuid4()), revision=1, createdAt=now, updatedAt=now)
