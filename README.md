@@ -20,7 +20,7 @@ Le fichier source `portal-config.js` conserve volontairement le mode local pour 
 
 Les étapes suivantes servent à installer un autre environnement ; elles ne sont pas à répéter sur la production déjà configurée.
 
-1. Créer le projet, appliquer le [script SQL initial](supabase/migrations/202610040001_portal.sql) puis la [migration Reach et fréquence](supabase/migrations/202610140001_campaign_reach_frequency.sql), importer les campagnes souhaitées, puis créer les comptes et leurs rôles selon le [guide Supabase](supabase/README.md).
+1. Créer le projet, appliquer les migrations SQL dans l'ordre indiqué dans le [guide Supabase](supabase/README.md), importer les campagnes souhaitées, puis créer les comptes et leurs rôles.
 2. Installer les dépendances avec `npm ci` (Node.js 22 ou supérieur).
 3. Importer le dépôt `sdmimouni-prog/campagne-yes` dans Vercel. Le portail est à la racine du dépôt : conserver **Root Directory** sur `.`. Framework : **Other** ; commande de build : `npm run build` ; dossier publié : `dist`. Le fichier `vercel.json` définit déjà les deux derniers réglages.
 4. Dans les variables Vercel, renseigner `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID=yes-baby`. Utiliser les valeurs du projet voulu pour l'environnement de production ; un environnement de test devrait avoir son propre projet et ses propres comptes.
@@ -46,7 +46,7 @@ La gestion est accessible par son lien direct, sans entrée dans le menu client.
 
 ## Saisie des campagnes
 
-Canaux : Facebook, Instagram, YouTube, TikTok et Display. Le formulaire comprend le nom, la période des résultats, le budget (MAD), les impressions, le Reach, la fréquence calculée, les clics, le CTR calculé, les vues vidéo, les TrueViews et les interactions. Les dépenses réelles sont facultatives et distinctes du budget.
+Canaux : Facebook, Instagram, YouTube, TikTok et Display. Le formulaire comprend le nom, la période des résultats, le budget (MAD), les impressions, le Reach, la fréquence calculée, les clics, le CTR calculé, les vues vidéo et les interactions. Les dépenses réelles sont facultatives et distinctes du budget.
 
 Une campagne contient les **totaux cumulés sur la période indiquée**. Une modification remplace les anciens totaux, sans les additionner. Le CTR vaut `clics / impressions × 100` ; il est indéterminé en base quand les impressions sont nulles. Pour une campagne initialisée explicitement à zéro clic et zéro impression, l'interface affiche `0,00 %` et exporte `0` par convention de présentation. Un champ inconnu ou un calcul impossible reste « — ». Une donnée facultative vide reste inconnue, contrairement à un zéro réellement saisi. Les agrégats incomplets restent inconnus.
 

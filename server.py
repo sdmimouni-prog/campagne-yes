@@ -59,7 +59,7 @@ def validate_campaign(payload):
             errors[field] = "Renseignez une date valide au format AAAA-MM-JJ."
     if "start" in result and "end" in result and result["start"] > result["end"]:
         errors["end"] = "La fin doit être égale ou postérieure au début."
-    for field in ("budget", "spend", "impressions", "reach", "clicks", "views", "trueviews", "interactions"):
+    for field in ("budget", "spend", "impressions", "reach", "clicks", "views", "interactions"):
         value = payload.get(field)
         if value is None and field not in ("budget", "impressions", "clicks"):
             result[field] = None
@@ -100,6 +100,7 @@ def campaign_frequency(record):
 def campaign_record(encoded):
     """Expose added metrics for older JSON records without inventing a reach."""
     record = json.loads(encoded)
+    record.pop("trueviews", None)
     record.setdefault("reach", None)
     record["frequency"] = campaign_frequency(record)
     return record
@@ -148,10 +149,12 @@ class CampaignStore:
         now = utc_now()
         with self.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
+            legacy_record = {}
             if campaign_id:
                 row = conn.execute("SELECT record FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
                 if not row:
                     raise APIError(404, "Campagne introuvable.")
+                legacy_record = json.loads(row[0])
                 current = campaign_record(row[0])
                 if current["revision"] != revision:
                     raise APIError(409, "Cette campagne a été modifiée. Rechargez sa dernière version.", current=current)
@@ -164,13 +167,17 @@ class CampaignStore:
                 record.update(id=campaign_id, revision=revision + 1, createdAt=current["createdAt"], updatedAt=now)
             else:
                 record.update(id=str(uuid.uuid4()), revision=1, createdAt=now, updatedAt=now)
-            encoded = json.dumps(record, ensure_ascii=False, allow_nan=False)
+            stored_record = {**record}
+            if "trueviews" in legacy_record:
+                # Retain historical storage only; this retired metric is never accepted or exposed.
+                stored_record["trueviews"] = legacy_record["trueviews"]
+            encoded = json.dumps(stored_record, ensure_ascii=False, allow_nan=False)
             conn.execute("INSERT OR REPLACE INTO campaigns(id, record) VALUES (?, ?)", (record["id"], encoded))
             conn.execute("INSERT OR REPLACE INTO metadata(key, value) VALUES ('mode', 'manual')")
             conn.execute("INSERT OR REPLACE INTO metadata(key, value) VALUES ('updatedAt', ?)", (now,))
             action = "archive" if archive else "update" if campaign_id else "create"
             conn.execute("INSERT INTO history(campaign_id, action, recorded_at, record) VALUES (?, ?, ?, ?)",
-                         (record["id"], action, now, encoded))
+                         (record["id"], action, now, json.dumps(record, ensure_ascii=False, allow_nan=False)))
         return {"campaign": record, "mode": "manual", "updatedAt": now}
 
 

@@ -3,7 +3,7 @@ import { getCampaigns, saveCampaign, requireAccess, getPortalMode, signOut, onSe
 const $ = id => document.getElementById(id);
 const form = $('campaign-form');
 const names = {facebook:'Facebook',instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok',display:'Display'};
-const integers = ['impressions','reach','clicks','views','trueviews','interactions'];
+const integers = ['impressions','reach','clicks','views','interactions'];
 const numeric = ['budget','spend',...integers];
 const fields = ['channel','name','start','end',...numeric];
 const number = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2});

@@ -5,7 +5,7 @@ import * as reporting from './reporting-data.js';
 const record = (id, changes = {}) => ({
   id, name: `Campagne ${id}`, channel: 'facebook', status: 'active',
   start: '2026-10-01', end: '2026-10-31', budget: 1000.25, spend: 120.2,
-  impressions: 1000, clicks: 10, views: 500, trueviews: null, interactions: 20,
+  impressions: 1000, clicks: 10, views: 500, interactions: 20,
   revision: 1, source: 'manual', ...changes,
 });
 const install = campaigns => reporting.setReportingData({ mode: 'manual', campaigns, updatedAt: '2026-10-04T12:00:00Z' });
@@ -48,19 +48,35 @@ test('cumulative records are counted once, wholly within their period; partial m
 });
 
 test('missing optional metrics remain unknown; a recorded zero remains zero', () => {
-  install([record('known', { trueviews: 0 }), record('missing', { views: null, spend: null, trueviews: null, interactions: null })]);
+  install([record('known', { interactions: 0 }), record('missing', { views: null, spend: null, interactions: null })]);
   const mixed = reporting.getSummary();
-  for (const key of ['spend', 'views', 'trueviews', 'interactions']) {
+  for (const key of ['spend', 'views', 'interactions']) {
     assert.equal(mixed.totals[key], null);
     assert.equal(mixed.byPlatform[0][key], null);
   }
-  assert.equal(reporting.getSummary({ campaign: 'known' }).totals.trueviews, 0);
+  assert.equal(reporting.getSummary({ campaign: 'known' }).totals.interactions, 0);
   assert.equal(reporting.getSummary({ campaign: 'known' }).totals.views, 500);
-  install([record('zero', { impressions: 0, clicks: 0, budget: 0, spend: 0, views: 0, trueviews: 0, interactions: 0 })]);
+  install([record('zero', { impressions: 0, clicks: 0, budget: 0, spend: 0, views: 0, interactions: 0 })]);
   const zero = reporting.getSummary();
   assert.equal(zero.rows[0].ctr, null);
   assert.equal(zero.totals.spend, 0);
   assert.equal(zero.budget, 0);
+});
+
+test('legacy TrueViews data is omitted from campaigns, results and aggregates', () => {
+  const legacy = record('legacy', { start: '2026-10-04', end: '2026-10-04', trueviews: 275 });
+  install([legacy]);
+  const summary = reporting.getSummary();
+  for (const output of [...reporting.CAMPAIGNS, ...summary.rows, summary.totals, ...summary.byPlatform, ...summary.timeline]) {
+    assert.equal(Object.hasOwn(output, 'trueviews'), false);
+  }
+  assert.equal(summary.rows[0].views, 500);
+  assert.equal(summary.totals.views, 500);
+  assert.equal(legacy.trueviews, 275);
+  reporting.setReportingData({ mode: 'demo', campaigns: [], updatedAt: null });
+  const demo = reporting.getSummary();
+  assert.equal(Object.hasOwn(demo.totals, 'trueviews'), false);
+  assert.ok(demo.byPlatform.every(platform => !Object.hasOwn(platform, 'trueviews')));
 });
 
 test('manual totals do not produce invented daily or audience measurements', () => {

@@ -8,6 +8,7 @@ Le projet [Supabase `jfsxvrfpaxacxbpemlgo`](https://supabase.com/dashboard/proje
 
 - La migration `migrations/202610040001_portal.sql` a été appliquée avec succès dans le SQL Editor.
 - La migration additive `migrations/202610140001_campaign_reach_frequency.sql` a été appliquée en production le 14 octobre 2026 après la migration initiale. La lecture authentifiée via `portal_list_campaigns` a confirmé les champs `reach` et `frequency` sur les 17 campagnes existantes, sans modification de leurs chiffres.
+- La migration `migrations/202610140002_remove_trueviews.sql` a été appliquée le 14 octobre 2026. La lecture authentifiée a confirmé l'absence de TrueViews dans les 17 campagnes et la présence des vues vidéo, du Reach et de la fréquence.
 - Les 11 campagnes ont été importées : 4 YouTube, 2 Facebook, 2 Instagram et 3 TikTok. Les UUID et les horodatages `created_at` et `updated_at` d'origine ont été conservés. Toutes les campagnes sont actives, avec les montants et compteurs à zéro, sur la période du 01/10/2026 au 31/12/2026.
 - Les inscriptions publiques et les connexions anonymes sont désactivées. La Site URL est `https://campagne-yes-ten.vercel.app`.
 - Les trois variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID` sont configurées dans l'environnement **Production** de Vercel.
@@ -25,7 +26,7 @@ Le fichier source `portal-config.js` reste en mode local pour conserver le proto
 Ces étapes décrivent une installation complète. Pour la production ci-dessus, ne pas réappliquer la migration initiale ni réimporter les campagnes. Appliquer uniquement les migrations suivantes encore manquantes, puis poursuivre la validation authentifiée.
 
 1. Créer le projet Supabase destiné au portail.
-2. Exécuter `migrations/202610040001_portal.sql`, puis `migrations/202610140001_campaign_reach_frequency.sql` dans le SQL Editor avec le propriétaire de la base, ou avec le mécanisme de migrations Supabase. Chaque script transactionnel s'exécute une fois, dans cet ordre.
+2. Exécuter `migrations/202610040001_portal.sql`, puis `migrations/202610140001_campaign_reach_frequency.sql`, puis `migrations/202610140002_remove_trueviews.sql` dans le SQL Editor avec le propriétaire de la base, ou avec le mécanisme de migrations Supabase. Chaque script transactionnel s'exécute une fois, dans cet ordre.
 3. Dans Authentication, désactiver les inscriptions publiques et les connexions anonymes. Configurer l'URL du site et les URL de retour autorisées avec le domaine du portail.
 4. Créer les comptes Richmedia et YES dans Authentication avec un accès e-mail/mot de passe opérationnel. Attribuer à chacun sa ligne dans `portal_memberships` en adaptant `provision-membership.sql.example`. Les UUID doivent venir de vrais comptes Auth. Aucun premier utilisateur ne devient administrateur automatiquement. L'administrateur configure les mots de passe directement dans Supabase ; ne pas les mettre dans ce dépôt ou dans la conversation. Le portail ne traite pas encore les liens d'invitation ou de récupération de mot de passe : ne pas compter sur ces liens pour ouvrir le premier accès.
 5. Renseigner la configuration de l'interface avec l'URL du projet, sa clé **publishable** (ou l'ancienne clé **anon**) et l'identifiant client `yes-baby`. Une clé `service_role` ou `secret` ne doit jamais se trouver dans le navigateur ni dans GitHub.
@@ -49,6 +50,8 @@ Le reporting expose ces mesures par campagne. Sans déduplication des audiences,
 
 ## Accès et données
 
+La migration `202610140002_remove_trueviews.sql` retire la métrique TrueViews des lectures et écritures du portail. Les anciennes valeurs et les instantanés d'audit restent conservés pour l'historique ; ils ne sont plus utilisés par le formulaire, les tableaux, les fiches ou les exports. Un ancien navigateur qui transmet encore ce champ ne modifie pas sa valeur historique. Les vues vidéo restent disponibles.
+
 | Table | Lecture par l'interface | Écriture par l'interface |
 |---|---|---|
 | `portal_clients` | Membres du client | Aucune |
@@ -69,7 +72,7 @@ La liste ne revient jamais à des chiffres de démonstration : une base Supabase
 - Erreur métier : `{error, status, fields?, current?}` ; l'interface doit traiter cette enveloppe même si le transport RPC retourne HTTP 200.
 - Refus d'accès : erreur PostgreSQL `42501`, à traiter comme un accès interdit.
 
-Champs d'une campagne côté interface : `id`, `revision`, `channel`, `name`, `start`, `end`, `budget`, `spend`, `impressions`, `reach`, `frequency`, `clicks`, `views`, `trueviews`, `interactions`, `ctr`, `status`, `source`, `createdAt`, `updatedAt`. Les champs JSON `id`, `revision` à la création, `ctr`, `frequency`, `source`, `client_id`, `createdAt` et `updatedAt` ne permettent pas de contourner les valeurs gérées par le serveur.
+Champs d'une campagne côté interface : `id`, `revision`, `channel`, `name`, `start`, `end`, `budget`, `spend`, `impressions`, `reach`, `frequency`, `clicks`, `views`, `interactions`, `ctr`, `status`, `source`, `createdAt`, `updatedAt`. Les champs JSON `id`, `revision` à la création, `ctr`, `frequency`, `source`, `client_id`, `createdAt` et `updatedAt` ne permettent pas de contourner les valeurs gérées par le serveur.
 
 La limite de 9 000 milliards maintient les compteurs dans la plage des entiers exacts JavaScript. Seuls les nombres JSON sont acceptés, pas les chaînes numériques ni les booléens. Les montants ont au maximum deux décimales ; les compteurs sont entiers ; les dates ISO sont validées et ordonnées.
 

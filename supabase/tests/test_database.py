@@ -18,6 +18,7 @@ OUTSIDER = "33333333-3333-4333-8333-333333333333"
 OTHER_ADMIN = "44444444-4444-4444-8444-444444444444"
 SQL_FILE = Path(__file__).resolve().parents[1] / "migrations/202610040001_portal.sql"
 REACH_MIGRATION = SQL_FILE.parent / "202610140001_campaign_reach_frequency.sql"
+RETIRE_MIGRATION = SQL_FILE.parent / "202610140002_remove_trueviews.sql"
 BASE = {
     "channel": "facebook", "name": "YES · Octobre", "start": "2026-10-01",
     "end": "2026-10-31", "budget": 10000.25, "impressions": 4000, "clicks": 20,
@@ -70,13 +71,17 @@ class DatabaseTests(unittest.TestCase):
             cls.run_sql(SQL_FILE.read_text())
             # Upgrade a populated database, as production already contains campaigns.
             cls.run_sql("""
-              insert into public.portal_campaigns(client_id,channel,name,start_date,end_date,budget,impressions,clicks)
-              values ('yes-baby','facebook','Before migration','2026-10-01','2026-10-31',125,200,10);
+              insert into public.portal_campaigns(client_id,channel,name,start_date,end_date,budget,impressions,clicks,trueviews)
+              values ('yes-baby','facebook','Before migration','2026-10-01','2026-10-31',125,200,10,321);
             """)
             cls.before_upgrade = json.loads(cls.run_sql("select portal_private.campaign_json(c) from public.portal_campaigns c;"))
             cls.run_sql(REACH_MIGRATION.read_text())
             cls.after_upgrade = json.loads(cls.run_sql("select portal_private.campaign_json(c) from public.portal_campaigns c;"))
             cls.upgrade_history_count = cls.run_sql("select count(*) from public.portal_campaign_history;")
+            cls.run_sql(RETIRE_MIGRATION.read_text())
+            cls.after_retirement = json.loads(cls.run_sql("select portal_private.campaign_json(c) from public.portal_campaigns c;"))
+            cls.retired_storage = cls.run_sql("select trueviews from public.portal_campaigns;")
+            cls.retired_history = json.loads(cls.run_sql("select record from public.portal_campaign_history;"))
             cls.run_sql(f"""
               insert into auth.users(id, email) values
                 ('{ADMIN}', 'admin@example.invalid'), ('{VIEWER}', 'viewer@example.invalid'),
@@ -141,6 +146,37 @@ class DatabaseTests(unittest.TestCase):
     def test_additive_migration_preserves_existing_records_and_audit(self):
         self.assertEqual(self.after_upgrade, {**self.before_upgrade, "reach": None, "frequency": None})
         self.assertEqual(self.upgrade_history_count, "1")
+        self.assertEqual(self.after_retirement, {k: v for k, v in self.after_upgrade.items() if k != "trueviews"})
+        self.assertEqual(self.retired_storage, "321")
+        self.assertEqual(self.retired_history, self.before_upgrade)
+
+    def test_retired_metric_is_ignored_hidden_and_preserved_in_storage(self):
+        c = self.save({**BASE, "reach": 2000, "trueviews": "retired"})["campaign"]
+        self.assertNotIn("trueviews", c)
+        self.assertEqual(self.run_sql("select trueviews is null from public.portal_campaigns;"), "t")
+        # Fixture representing an old saved value; portal clients cannot perform this write.
+        self.run_sql(f"update public.portal_campaigns set trueviews = 321 where id = {literal(c['id'])};")
+        self.assertEqual(self.listing(user=VIEWER)["campaigns"], [c])
+        updated = self.save({**BASE, "revision": 1, "impressions": 8000, "trueviews": None}, c["id"])["campaign"]
+        self.assertNotIn("trueviews", updated)
+        self.assertEqual(updated["frequency"], 4)
+        conflict = self.save({**BASE, "revision": 1}, c["id"])
+        self.assertEqual(conflict["status"], 409)
+        self.assertNotIn("trueviews", conflict["current"])
+        archived = self.save({"revision": 2}, c["id"], archive=True)["campaign"]
+        self.assertNotIn("trueviews", archived)
+        restored = self.save({**BASE, "revision": 3, "trueviews": 999}, c["id"])["campaign"]
+        self.assertNotIn("trueviews", restored)
+        self.assertEqual(self.run_sql("select trueviews from public.portal_campaigns;"), "321")
+        self.assertEqual(self.run_sql("select count(*) from public.portal_campaign_history where record ? 'trueviews';"), "0")
+
+    def test_initial_campaign_seeds_leave_retired_metric_unset(self):
+        for seed in sorted(SQL_FILE.parent.parent.glob("seed-yes-*.sql")):
+            self.run_sql(seed.read_text())
+            self.run_sql(seed.read_text())  # Idempotent, existing records remain untouched.
+        self.assertEqual(self.run_sql("select count(*) from public.portal_campaigns;"), "11")
+        self.assertEqual(self.run_sql("select count(*) from public.portal_campaigns where trueviews is not null;"), "0")
+        self.assertTrue(all("trueviews" not in campaign for campaign in self.listing()["campaigns"]))
 
     def test_reach_frequency_storage_and_backward_compatible_updates(self):
         c = self.save({**BASE, "reach": 2400, "frequency": 999})["campaign"]
@@ -172,10 +208,10 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(c["ctr"], 0.5)
         self.assertEqual(c["revision"], 1)
         self.assertEqual(c["source"], "manual")
-        for field in ("spend", "views", "trueviews", "interactions", "reach", "frequency"):
+        for field in ("spend", "views", "interactions", "reach", "frequency"):
             self.assertIsNone(c[field])
         updated = self.save({**BASE, "revision": 1, "impressions": 5000, "clicks": 25,
-                             "spend": 150.75, "views": 0, "trueviews": 300, "interactions": 42}, c["id"])["campaign"]
+                             "spend": 150.75, "views": 0, "interactions": 42}, c["id"])["campaign"]
         self.assertEqual(updated["revision"], 2)
         self.assertEqual(updated["impressions"], 5000)  # Replacement, not addition.
         self.assertEqual(updated["createdAt"], c["createdAt"])
@@ -198,7 +234,7 @@ class DatabaseTests(unittest.TestCase):
             ("end", "2026-09-30"), ("budget", "10"), ("budget", True), ("budget", None),
             ("budget", 10.001), ("spend", -1), ("impressions", 1.25), ("clicks", False),
             ("views", "5"), ("views", 9000000000001), ("interactions", -1),
-            ("trueviews", 0.3), ("status", None), ("status", "paused"),
+            ("status", None), ("status", "paused"),
             ("reach", -1), ("reach", 0.5), ("reach", True), ("reach", "25"), ("reach", 9000000000001),
         ]
         for field, value in invalid:

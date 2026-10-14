@@ -47,7 +47,7 @@ class CampaignAPITest(unittest.TestCase):
     def campaign(self, **changes):
         return {"channel": "facebook", "name": "YES · Notoriété", "start": "2026-10-01",
                 "end": "2026-10-31", "budget": 40000, "spend": None, "impressions": 1000,
-                "clicks": 30, "views": 0, "trueviews": None, "interactions": 15, **changes}
+                "clicks": 30, "views": 0, "interactions": 15, **changes}
 
     def test_durable_creation_replacement_conflict_and_archive(self):
         self.assertEqual(self.request("GET")[1], {"mode": "demo", "campaigns": [], "updatedAt": None})
@@ -83,7 +83,7 @@ class CampaignAPITest(unittest.TestCase):
 
     def test_invalid_values_are_rejected_without_switching_to_manual(self):
         cases = [{"budget": -1}, {"budget": 1.001}, {"spend": "10"}, {"impressions": 0.5},
-                 {"clicks": True}, {"clicks": None}, {"views": -1}, {"trueviews": "4"},
+                 {"clicks": True}, {"clicks": None}, {"views": -1},
                  {"clicks": 10 ** 500},
                  {"interactions": 9_000_000_000_001}, {"reach": -1}, {"reach": 0.5},
                  {"reach": True}, {"reach": "25"}, {"reach": 9_000_000_000_001},
@@ -140,6 +140,37 @@ class CampaignAPITest(unittest.TestCase):
         self.assertEqual(loaded, {**record, "reach": None, "frequency": None})
         with store.connect() as conn:
             self.assertEqual(json.loads(conn.execute("SELECT record FROM campaigns").fetchone()[0]), record)
+
+    def test_retired_metric_is_hidden_and_ignored_but_legacy_storage_is_preserved(self):
+        status, payload = self.request("POST", data=self.campaign(trueviews="retired", reach=500))
+        self.assertEqual(status, 201)
+        record = payload["campaign"]
+        self.assertNotIn("trueviews", record)
+        legacy = {**record, "trueviews": 321}
+        store = CampaignStore(self.root / ".data")
+        with store.connect() as conn:
+            conn.execute("UPDATE campaigns SET record = ? WHERE id = ?", (json.dumps(legacy), record["id"]))
+            conn.execute("UPDATE history SET record = ? WHERE campaign_id = ?", (json.dumps(legacy), record["id"]))
+        self.assertEqual(self.request("GET")[1]["campaigns"], [record])
+        path = "/api/campaigns/" + record["id"]
+        status, edited = self.request("PUT", path, self.campaign(revision=1, trueviews=None, impressions=2000))
+        self.assertEqual(status, 200)
+        self.assertNotIn("trueviews", edited["campaign"])
+        self.assertEqual(edited["campaign"]["frequency"], 4)
+        status, conflict = self.request("PUT", path, self.campaign(revision=1))
+        self.assertEqual(status, 409)
+        self.assertNotIn("trueviews", conflict["current"])
+        status, archived = self.request("POST", path + "/archive", {"revision": 2})
+        self.assertEqual(status, 200)
+        self.assertNotIn("trueviews", archived["campaign"])
+        status, restored = self.request("PUT", path, self.campaign(revision=3, trueviews=999))
+        self.assertEqual(status, 200)
+        self.assertNotIn("trueviews", restored["campaign"])
+        with store.connect() as conn:
+            self.assertEqual(json.loads(conn.execute("SELECT record FROM campaigns").fetchone()[0])["trueviews"], 321)
+            history = [json.loads(row[0]) for row in conn.execute("SELECT record FROM history ORDER BY id")]
+        self.assertEqual(history[0], legacy)
+        self.assertTrue(all("trueviews" not in item for item in history[1:]))
 
     def test_request_boundary_and_private_files(self):
         self.assertEqual(self.request("GET", "/")[0], 200)

@@ -13,7 +13,7 @@ const PLATFORM_DEFINITIONS = Object.freeze([
   { id: 'display', name: 'Display', shortName: 'Display', color: '#E69D53' },
 ]);
 const CHANNEL_PLATFORMS = Object.freeze({ facebook: 'meta', instagram: 'meta', youtube: 'youtube', tiktok: 'tiktok', display: 'display' });
-const OPTIONAL_METRICS = ['spend', 'views', 'trueviews', 'interactions'];
+const OPTIONAL_METRICS = ['spend', 'views', 'interactions'];
 const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 let reportingState = { mode: 'loading', updatedAt: null };
 let reportingGeneration = 0;
@@ -37,6 +37,8 @@ function normalizeCampaign(record) {
     throw new Error('Une campagne enregistrée contient des données invalides.');
   }
   const normalized = { ...record, platform: CHANNEL_PLATFORMS[record.channel], source: 'manual' };
+  // Ignore the retired metric if an older API response still includes it.
+  delete normalized.trueviews;
   for (const metric of OPTIONAL_METRICS) {
     const value = record[metric] ?? null;
     if (value !== null && !validNumber(value, metric !== 'spend')) {
@@ -148,8 +150,8 @@ export function getSummary({ period, platform = 'all', campaign = 'all' } = {}) 
     const result = demonstration.getSummary({ period, platform, campaign });
     return {
       ...result,
-      totals: { ...result.totals, trueviews: null, interactions: null },
-      byPlatform: result.byPlatform.map(item => ({ ...item, trueviews: null, interactions: null })),
+      totals: { ...result.totals, interactions: null },
+      byPlatform: result.byPlatform.map(item => ({ ...item, interactions: null })),
       excludedPartialCount: 0,
       timelineUnavailable: false,
     };

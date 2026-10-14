@@ -9,9 +9,9 @@ with initial(id, name, start_date, end_date) as (values
 )
 insert into public.portal_campaigns
   (id, client_id, channel, name, start_date, end_date, budget, spend,
-   impressions, clicks, views, trueviews, interactions, status)
+   impressions, clicks, views, interactions, status)
 select initial.id::uuid, 'yes-baby', 'facebook', initial.name,
-  initial.start_date::date, initial.end_date::date, 0, 0, 0, 0, 0, 0, 0, 'active'
+  initial.start_date::date, initial.end_date::date, 0, 0, 0, 0, 0, 0, 'active'
 from initial
 where not exists (
   select 1 from public.portal_campaigns existing
