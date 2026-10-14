@@ -1,7 +1,8 @@
 /**
  * Reporting boundary between the illustrative dashboard and saved campaigns.
  * A saved total belongs to its complete reporting period: it is never prorated
- * into months or synthesized into daily or demographic observations.
+ * into months or synthesized into daily or demographic observations. Audience
+ * breakdowns are independent measurements and retain their missing coverage.
  */
 import * as demonstration from './dashboard-data.js';
 import { getCampaigns } from './portal-service.js';
@@ -14,6 +15,13 @@ const PLATFORM_DEFINITIONS = Object.freeze([
 ]);
 const CHANNEL_PLATFORMS = Object.freeze({ facebook: 'meta', instagram: 'meta', youtube: 'youtube', tiktok: 'tiktok', display: 'display' });
 const OPTIONAL_METRICS = ['spend', 'views', 'interactions'];
+const AUDIENCE_METRICS = ['impressions', 'clicks', 'reach'];
+const AUDIENCE_LABELS = Object.freeze({
+  gender: ['Femmes', 'Hommes', 'Non renseigné'],
+  ages: ['13–17', '18–24', '25–34', '35–44', '45–54', '55–64', '65+', 'Non renseigné'],
+  cities: null,
+});
+const AUDIENCE_DIMENSIONS = Object.keys(AUDIENCE_LABELS);
 const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 let reportingState = { mode: 'loading', updatedAt: null };
 let reportingGeneration = 0;
@@ -27,6 +35,42 @@ const sumMoney = rows => roundMoney(rows.reduce((sum, row) => sum + Math.round(r
 const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
   Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 const validNumber = (value, integer = false) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 9e12 && (!integer || Number.isInteger(value));
+
+function normalizeAudience(input, campaign) {
+  const invalid = () => { throw new Error('Les données d’audience enregistrées sont invalides.'); };
+  if (input == null) input = {};
+  if (typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !AUDIENCE_DIMENSIONS.includes(key))) invalid();
+  const audience = {};
+  for (const dimension of AUDIENCE_DIMENSIONS) {
+    const rows = input[dimension] ?? [];
+    if (!Array.isArray(rows) || rows.length > 100) invalid();
+    const labels = new Set();
+    const totals = Object.fromEntries(AUDIENCE_METRICS.map(metric => [metric, 0]));
+    audience[dimension] = [];
+    for (const row of rows) {
+      if (!row || typeof row !== 'object' || Array.isArray(row) ||
+          Object.keys(row).some(key => !['label', ...AUDIENCE_METRICS].includes(key)) || typeof row.label !== 'string') invalid();
+      const label = row.label.trim();
+      const key = label.toLowerCase();
+      if (!label || [...label].length > 80 || labels.has(key) ||
+          (AUDIENCE_LABELS[dimension] && !AUDIENCE_LABELS[dimension].includes(label))) invalid();
+      labels.add(key);
+      const normalized = { label };
+      for (const metric of AUDIENCE_METRICS) {
+        const value = row[metric] ?? null;
+        if (value !== null && !validNumber(value, true)) invalid();
+        normalized[metric] = value;
+        if (value !== null) totals[metric] += value;
+      }
+      if (AUDIENCE_METRICS.some(metric => normalized[metric] !== null)) audience[dimension].push(Object.freeze(normalized));
+    }
+    for (const metric of AUDIENCE_METRICS) {
+      if (campaign[metric] !== null && totals[metric] > campaign[metric]) invalid();
+    }
+    Object.freeze(audience[dimension]);
+  }
+  return Object.freeze(audience);
+}
 
 function normalizeCampaign(record) {
   if (!record || typeof record !== 'object' || typeof record.id !== 'string' || !record.id ||
@@ -52,6 +96,7 @@ function normalizeCampaign(record) {
   }
   normalized.frequency = normalized.reach > 0 ? record.impressions / normalized.reach : null;
   normalized.ctr = record.impressions > 0 ? record.clicks / record.impressions * 100 : null;
+  normalized.audience = normalizeAudience(record.audience, normalized);
   return Object.freeze(normalized);
 }
 
@@ -182,6 +227,63 @@ export function getSummary({ period, platform = 'all', campaign = 'all' } = {}) 
 
 export function getAudience(options = {}) {
   if (reportingState.mode === 'loading') throw new Error('Les campagnes ne sont pas encore chargées.');
-  if (reportingState.mode === 'demo') return demonstration.getAudience(options);
-  return { total: null, cities: [], gender: [], ages: [] };
+  const metric = AUDIENCE_METRICS.includes(options.metric) ? options.metric : 'impressions';
+  // The same summary selects campaigns and whole reporting periods for both views.
+  const summary = getSummary(options);
+  const campaignCount = summary.totals.activeCampaigns;
+  const reachRequiresSingleCampaign = metric === 'reach' && campaignCount > 1;
+  const source = reportingState.mode;
+  const total = metric === 'reach' ? summary.totals.reach ?? null : summary.totals[metric];
+  const audience = { total, cities: [], gender: [], ages: [], source, dimensions: {}, reachRequiresSingleCampaign };
+  if (source === 'demo' && metric !== 'reach') {
+    const demo = demonstration.getAudience({ ...options, metric });
+    for (const dimension of AUDIENCE_DIMENSIONS) {
+      audience[dimension] = demo[dimension];
+      audience.dimensions[dimension] = {
+        total: demo.total, reportedTotal: demo.total,
+        coverage: demo.total > 0 ? 1 : null, partial: false,
+        availableCampaigns: campaignCount, campaignCount,
+      };
+    }
+    return audience;
+  }
+  if (reachRequiresSingleCampaign || source === 'demo') {
+    for (const dimension of AUDIENCE_DIMENSIONS) {
+      audience.dimensions[dimension] = {
+        total: null, reportedTotal: 0, coverage: null, partial: campaignCount > 0,
+        availableCampaigns: 0, campaignCount,
+      };
+    }
+    return audience;
+  }
+  for (const dimension of AUDIENCE_DIMENSIONS) {
+    const buckets = new Map();
+    let availableCampaigns = 0;
+    let missingValues = false;
+    for (const campaign of summary.rows) {
+      const rows = campaign.audience[dimension];
+      if (rows.some(row => row[metric] !== null)) availableCampaigns += 1;
+      if (rows.some(row => row[metric] === null)) missingValues = true;
+      for (const row of rows) {
+        if (row[metric] === null) continue;
+        const key = row.label.toLowerCase();
+        if (!buckets.has(key)) buckets.set(key, { label: row.label, value: 0 });
+        buckets.get(key).value += row[metric];
+      }
+    }
+    const rows = [...buckets.values()];
+    if (dimension === 'cities') rows.sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'fr'));
+    else rows.sort((a, b) => AUDIENCE_LABELS[dimension].indexOf(a.label) - AUDIENCE_LABELS[dimension].indexOf(b.label));
+    const reportedTotal = rows.reduce((sum, row) => sum + row.value, 0);
+    audience[dimension] = rows;
+    audience.dimensions[dimension] = {
+      total: total ?? reportedTotal,
+      reportedTotal,
+      coverage: total > 0 ? reportedTotal / total : null,
+      partial: campaignCount > 0 && (total === null || missingValues || availableCampaigns < campaignCount || reportedTotal < total),
+      availableCampaigns,
+      campaignCount,
+    };
+  }
+  return audience;
 }

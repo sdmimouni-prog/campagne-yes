@@ -11,6 +11,21 @@ from unittest.mock import patch
 from server import CampaignStore, PortalHandler, make_server
 
 
+EMPTY_AUDIENCE = {"gender": [], "ages": [], "cities": []}
+AUDIENCE_INPUT = {
+    "gender": [{"label": "Femmes", "impressions": 600, "clicks": 12, "reach": 300},
+               {"label": "Hommes", "impressions": 400, "clicks": 0}, {"label": "Non renseigné"}],
+    "ages": [{"label": "25–34", "impressions": 800, "clicks": None, "reach": 350}],
+    "cities": [{"label": "  Casablanca \t", "impressions": 500, "clicks": 5}],
+}
+AUDIENCE = {
+    "gender": [{"label": "Femmes", "impressions": 600, "clicks": 12, "reach": 300},
+               {"label": "Hommes", "impressions": 400, "clicks": 0, "reach": None}],
+    "ages": [{"label": "25–34", "impressions": 800, "clicks": None, "reach": 350}],
+    "cities": [{"label": "Casablanca", "impressions": 500, "clicks": 5, "reach": None}],
+}
+
+
 class CampaignAPITest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -133,11 +148,12 @@ class CampaignAPITest(unittest.TestCase):
         record = self.request("POST", data=self.campaign())[1]["campaign"]
         self.assertIsNone(record.pop("reach"))
         self.assertIsNone(record.pop("frequency"))
+        self.assertEqual(record.pop("audience"), EMPTY_AUDIENCE)
         store = CampaignStore(self.root / ".data")
         with store.connect() as conn:
             conn.execute("UPDATE campaigns SET record = ? WHERE id = ?", (json.dumps(record), record["id"]))
         loaded = self.request("GET")[1]["campaigns"][0]
-        self.assertEqual(loaded, {**record, "reach": None, "frequency": None})
+        self.assertEqual(loaded, {**record, "reach": None, "frequency": None, "audience": EMPTY_AUDIENCE})
         with store.connect() as conn:
             self.assertEqual(json.loads(conn.execute("SELECT record FROM campaigns").fetchone()[0]), record)
 
@@ -171,6 +187,76 @@ class CampaignAPITest(unittest.TestCase):
             history = [json.loads(row[0]) for row in conn.execute("SELECT record FROM history ORDER BY id")]
         self.assertEqual(history[0], legacy)
         self.assertTrue(all("trueviews" not in item for item in history[1:]))
+
+    def test_audience_persistence_legacy_updates_conflicts_archive_restore_and_clear(self):
+        status, payload = self.request("POST", data=self.campaign(reach=500, audience=AUDIENCE_INPUT))
+        self.assertEqual(status, 201)
+        record = payload["campaign"]
+        self.assertEqual(record["audience"], AUDIENCE)
+        self.assertEqual(CampaignStore(self.root / ".data").list()["campaigns"], [record])
+        path = "/api/campaigns/" + record["id"]
+        for total in ({"impressions": 999}, {"clicks": 11}, {"reach": 299}):
+            with self.subTest(total=total):
+                status, error = self.request("PUT", path, self.campaign(revision=1, **total))
+                self.assertEqual(status, 422)
+                self.assertIn("audience", error["fields"])
+        self.assertEqual(self.request("GET")[1]["campaigns"], [record])
+        status, edited = self.request("PUT", path, self.campaign(revision=1, impressions=2000))
+        self.assertEqual(status, 200)
+        self.assertEqual(edited["campaign"]["audience"], AUDIENCE)
+        self.assertEqual(edited["campaign"]["reach"], 500)
+        status, conflict = self.request("PUT", path, self.campaign(revision=1))
+        self.assertEqual(status, 409)
+        self.assertEqual(conflict["current"]["audience"], AUDIENCE)
+        status, archived = self.request("POST", path + "/archive", {"revision": 2})
+        self.assertEqual(status, 200)
+        self.assertEqual(archived["campaign"]["audience"], AUDIENCE)
+        status, restored = self.request("PUT", path, self.campaign(revision=3))
+        self.assertEqual(status, 200)
+        self.assertEqual(restored["campaign"]["audience"], AUDIENCE)
+        status, cleared = self.request("PUT", path, self.campaign(revision=4, audience=None, impressions=0, clicks=0, reach=0))
+        self.assertEqual(status, 200)
+        self.assertEqual(cleared["campaign"]["audience"], EMPTY_AUDIENCE)
+        with CampaignStore(self.root / ".data").connect() as conn:
+            history = [json.loads(row[0]) for row in conn.execute("SELECT record FROM history ORDER BY id")]
+        self.assertEqual([item["audience"] for item in history], [AUDIENCE] * 4 + [EMPTY_AUDIENCE])
+
+    def test_audience_null_zero_and_dimension_sums(self):
+        for audience in (None, {}, {"gender": None, "ages": None, "cities": None}):
+            with self.subTest(audience=audience):
+                status, payload = self.request("POST", data=self.campaign(audience=audience))
+                self.assertEqual(status, 201)
+                self.assertEqual(payload["campaign"]["audience"], EMPTY_AUDIENCE)
+        status, payload = self.request("POST", data=self.campaign(impressions=0, clicks=0, audience={
+            "gender": [{"label": "Femmes", "impressions": 0, "clicks": 0, "reach": 100}],
+            "ages": [{"label": "65+", "reach": None}],
+        }))
+        self.assertEqual(status, 201)  # Unknown total reach imposes no invented cap.
+        self.assertEqual(payload["campaign"]["audience"], {
+            **EMPTY_AUDIENCE, "gender": [{"label": "Femmes", "impressions": 0, "clicks": 0, "reach": 100}],
+        })
+
+    def test_invalid_audience_is_rejected_without_storage_changes(self):
+        invalid = [[], "audience", 0, {"other": []}, {"gender": {}}, {"ages": [None]},
+                   {"gender": [{"label": "femmes", "clicks": 0}]},
+                   {"ages": [{"label": "25-34", "clicks": 0}]},
+                   {"cities": [{"label": " "}]}, {"cities": [{"label": "x" * 81}]},
+                   {"cities": [{"label": "Rabat", "views": 2}]},
+                   {"cities": [{"label": "Rabat"}, {"label": " rabat "}]},
+                   {"cities": [{"label": str(i)} for i in range(101)]},
+                   {"gender": [{"label": "Femmes", "impressions": 600}, {"label": "Hommes", "impressions": 401}]},
+                   {"ages": [{"label": "18–24", "clicks": 31}]},
+                   {"cities": [{"label": "Rabat", "reach": 501}]}]
+        for metric in ("impressions", "clicks", "reach"):
+            for value in (-1, 0.5, True, "10", [], {}, 9_000_000_000_001):
+                invalid.append({"cities": [{"label": "Rabat", metric: value}]})
+        for audience in invalid:
+            with self.subTest(audience=audience):
+                status, error = self.request("POST", data=self.campaign(reach=500, audience=audience))
+                self.assertEqual(status, 422)
+                self.assertIn("audience", error["fields"])
+        self.assertEqual(self.request("GET")[1]["mode"], "demo")
+        self.assertEqual(self.request("GET")[1]["campaigns"], [])
 
     def test_request_boundary_and_private_files(self):
         self.assertEqual(self.request("GET", "/")[0], 200)

@@ -9,7 +9,8 @@ Le projet [Supabase `jfsxvrfpaxacxbpemlgo`](https://supabase.com/dashboard/proje
 - La migration `migrations/202610040001_portal.sql` a été appliquée avec succès dans le SQL Editor.
 - La migration additive `migrations/202610140001_campaign_reach_frequency.sql` a été appliquée en production le 14 octobre 2026 après la migration initiale. La lecture authentifiée via `portal_list_campaigns` a confirmé les champs `reach` et `frequency` sur les 17 campagnes existantes, sans modification de leurs chiffres.
 - La migration `migrations/202610140002_remove_trueviews.sql` a été appliquée le 14 octobre 2026. La lecture authentifiée a confirmé l'absence de TrueViews dans les 17 campagnes et la présence des vues vidéo, du Reach et de la fréquence.
-- Les 11 campagnes ont été importées : 4 YouTube, 2 Facebook, 2 Instagram et 3 TikTok. Les UUID et les horodatages `created_at` et `updated_at` d'origine ont été conservés. Toutes les campagnes sont actives, avec les montants et compteurs à zéro, sur la période du 01/10/2026 au 31/12/2026.
+- La migration `migrations/202610140003_campaign_audience.sql` a été appliquée le 14 octobre 2026 via PostgreSQL. La lecture authentifiée de `portal_list_campaigns` confirme les trois répartitions initialement vides sur les 17 campagnes. L'empreinte des champs préexistants est identique avant et après la migration ; la contrainte de validation d'audience est active.
+- L'import initial du 4 octobre 2026 comprenait 11 campagnes : 4 YouTube, 2 Facebook, 2 Instagram et 3 TikTok. Les UUID et les horodatages `created_at` et `updated_at` d'origine ont été conservés. Elles étaient alors actives, avec les montants et compteurs à zéro, sur la période du 01/10/2026 au 31/12/2026. Ces chiffres décrivent l'import initial, pas l'état actuel.
 - Les inscriptions publiques et les connexions anonymes sont désactivées. La Site URL est `https://campagne-yes-ten.vercel.app`.
 - Les trois variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID` sont configurées dans l'environnement **Production** de Vercel.
 - Les lectures anonymes de `portal_campaigns` et de `portal_list_campaigns` sont refusées : HTTP `401`, code PostgreSQL `42501`.
@@ -26,7 +27,7 @@ Le fichier source `portal-config.js` reste en mode local pour conserver le proto
 Ces étapes décrivent une installation complète. Pour la production ci-dessus, ne pas réappliquer la migration initiale ni réimporter les campagnes. Appliquer uniquement les migrations suivantes encore manquantes, puis poursuivre la validation authentifiée.
 
 1. Créer le projet Supabase destiné au portail.
-2. Exécuter `migrations/202610040001_portal.sql`, puis `migrations/202610140001_campaign_reach_frequency.sql`, puis `migrations/202610140002_remove_trueviews.sql` dans le SQL Editor avec le propriétaire de la base, ou avec le mécanisme de migrations Supabase. Chaque script transactionnel s'exécute une fois, dans cet ordre.
+2. Exécuter les migrations dans cet ordre : `202610040001_portal.sql`, `202610140001_campaign_reach_frequency.sql`, `202610140002_remove_trueviews.sql`, puis `202610140003_campaign_audience.sql` (dossier `migrations/`). Utiliser le SQL Editor avec le propriétaire de la base, ou le mécanisme de migrations Supabase. Chaque script transactionnel s'exécute une fois.
 3. Dans Authentication, désactiver les inscriptions publiques et les connexions anonymes. Configurer l'URL du site et les URL de retour autorisées avec le domaine du portail.
 4. Créer les comptes Richmedia et YES dans Authentication avec un accès e-mail/mot de passe opérationnel. Attribuer à chacun sa ligne dans `portal_memberships` en adaptant `provision-membership.sql.example`. Les UUID doivent venir de vrais comptes Auth. Aucun premier utilisateur ne devient administrateur automatiquement. L'administrateur configure les mots de passe directement dans Supabase ; ne pas les mettre dans ce dépôt ou dans la conversation. Le portail ne traite pas encore les liens d'invitation ou de récupération de mot de passe : ne pas compter sur ces liens pour ouvrir le premier accès.
 5. Renseigner la configuration de l'interface avec l'URL du projet, sa clé **publishable** (ou l'ancienne clé **anon**) et l'identifiant client `yes-baby`. Une clé `service_role` ou `secret` ne doit jamais se trouver dans le navigateur ni dans GitHub.
@@ -47,6 +48,16 @@ Sur une base ayant déjà reçu la migration initiale, appliquer seulement `migr
 `reach` est facultatif, entier et positif ou nul. `frequency` vaut `impressions / reach` si le Reach est strictement positif ; sinon elle reste `null`. Le formulaire recalcule cette fréquence pendant la saisie, et PostgreSQL la calcule indépendamment à l'enregistrement. Une fréquence envoyée par le navigateur ne remplace pas le calcul serveur. Une modification provenant d'un ancien formulaire qui omet `reach` conserve le Reach enregistré ; transmettre explicitement `reach: null` efface la mesure.
 
 Le reporting expose ces mesures par campagne. Sans déduplication des audiences, il n'additionne pas les Reach entre campagnes et ne calcule pas de fréquence globale sur plusieurs campagnes. Ces agrégats restent inconnus.
+
+## Répartitions d'audience
+
+Après les migrations précédentes, `202610140003_campaign_audience.sql` ajoute le champ JSON `audience` et adapte les lectures et écritures. Les anciennes campagnes reçoivent des listes vides ; aucun chiffre n'est fabriqué ni réinitialisé. Le formulaire permet de saisir sexe, âge et ville pour les impressions, clics et Reach. Les tableaux et graphiques du dashboard utilisent ces valeurs avec les mêmes filtres que les résultats.
+
+Le contrat est `audience: {gender: [], ages: [], cities: []}`. Chaque ligne contient `label`, `impressions`, `clicks` et `reach` ; chaque mesure est un entier positif ou nul, ou `null` si inconnue. Les dimensions absentes ou `null` deviennent des listes vides, et les lignes sans aucune mesure sont omises. Une modification qui omet `audience` conserve les répartitions existantes et les revalide avec les nouveaux totaux ; `audience: null` les efface explicitement.
+
+La validation interdit les clés inconnues, plus de 100 lignes par dimension, les doublons de libellés sans distinction de casse et les villes vides ou dépassant 80 caractères après retrait des espaces de bord. Sexe : `Femmes`, `Hommes`, `Non renseigné`. Âge : `13–17`, `18–24`, `25–34`, `35–44`, `45–54`, `55–64`, `65+`, `Non renseigné`. Chaque somme par dimension et mesure doit rester inférieure ou égale au total connu de la campagne. Les erreurs renvoient `422` avec `fields.audience` ; l'historique et les droits restent inchangés.
+
+Pour les impressions et clics, les catégories sont regroupées entre campagnes, mais le dénominateur inclut toutes les campagnes sélectionnées : une répartition incomplète conserve une couverture partielle. Le Reach n'est affiché que pour une seule campagne. Si son total est inconnu, chaque graphique utilise le total de ses lignes renseignées et l'indique, sans annoncer une couverture complète. Les zéros explicites restent visibles ; les répartitions absentes restent vides.
 
 ## Accès et données
 
@@ -72,7 +83,7 @@ La liste ne revient jamais à des chiffres de démonstration : une base Supabase
 - Erreur métier : `{error, status, fields?, current?}` ; l'interface doit traiter cette enveloppe même si le transport RPC retourne HTTP 200.
 - Refus d'accès : erreur PostgreSQL `42501`, à traiter comme un accès interdit.
 
-Champs d'une campagne côté interface : `id`, `revision`, `channel`, `name`, `start`, `end`, `budget`, `spend`, `impressions`, `reach`, `frequency`, `clicks`, `views`, `interactions`, `ctr`, `status`, `source`, `createdAt`, `updatedAt`. Les champs JSON `id`, `revision` à la création, `ctr`, `frequency`, `source`, `client_id`, `createdAt` et `updatedAt` ne permettent pas de contourner les valeurs gérées par le serveur.
+Champs d'une campagne côté interface : `id`, `revision`, `channel`, `name`, `start`, `end`, `budget`, `spend`, `impressions`, `reach`, `frequency`, `audience`, `clicks`, `views`, `interactions`, `ctr`, `status`, `source`, `createdAt`, `updatedAt`. Les champs JSON `id`, `revision` à la création, `ctr`, `frequency`, `source`, `client_id`, `createdAt` et `updatedAt` ne permettent pas de contourner les valeurs gérées par le serveur.
 
 La limite de 9 000 milliards maintient les compteurs dans la plage des entiers exacts JavaScript. Seuls les nombres JSON sont acceptés, pas les chaînes numériques ni les booléens. Les montants ont au maximum deux décimales ; les compteurs sont entiers ; les dates ISO sont validées et ordonnées.
 

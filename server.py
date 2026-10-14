@@ -24,6 +24,12 @@ ROOT = Path(__file__).resolve().parent
 MAX_NUMBER = 9_000_000_000_000
 MAX_BODY = 65_536
 CHANNELS = {"facebook", "instagram", "youtube", "tiktok", "display"}
+AUDIENCE_DIMENSIONS = {"gender": "sexe", "ages": "âge", "cities": "ville"}
+AUDIENCE_METRICS = {"impressions": "impressions", "clicks": "clics", "reach": "Reach"}
+AUDIENCE_LABELS = {
+    "gender": {"Femmes", "Hommes", "Non renseigné"},
+    "ages": {"13–17", "18–24", "25–34", "35–44", "45–54", "55–64", "65+", "Non renseigné"},
+}
 
 
 def utc_now():
@@ -35,6 +41,62 @@ class APIError(Exception):
         self.status = status
         self.payload = {"error": message, **details}
         super().__init__(message)
+
+
+def empty_audience():
+    return {dimension: [] for dimension in AUDIENCE_DIMENSIONS}
+
+
+def validate_audience(audience, totals):
+    """Canonical optional breakdowns; zeros are observations, not missing values."""
+    result = empty_audience()
+
+    def invalid(message):
+        raise APIError(422, "Vérifiez les champs du formulaire.", fields={"audience": message})
+
+    if audience is None:
+        return result
+    if not isinstance(audience, dict) or set(audience) - set(AUDIENCE_DIMENSIONS):
+        invalid("L’audience doit contenir uniquement les répartitions par sexe, âge et ville.")
+    for dimension, title in AUDIENCE_DIMENSIONS.items():
+        rows = audience.get(dimension)
+        if rows is None:
+            rows = []
+        if not isinstance(rows, list) or len(rows) > 100:
+            invalid(f"La répartition par {title} accepte au maximum 100 lignes.")
+        labels = set()
+        sums = {metric: 0 for metric in AUDIENCE_METRICS}
+        for row in rows:
+            if not isinstance(row, dict) or set(row) - {"label", *AUDIENCE_METRICS}:
+                invalid(f"Chaque ligne de la répartition par {title} doit contenir un libellé et ses indicateurs.")
+            label = row.get("label")
+            if not isinstance(label, str) or not 1 <= len(label.strip()) <= 80:
+                invalid(f"Chaque libellé de la répartition par {title} doit contenir entre 1 et 80 caractères.")
+            label = label.strip()
+            if dimension in AUDIENCE_LABELS and label not in AUDIENCE_LABELS[dimension]:
+                invalid(f"Libellé non reconnu dans la répartition par {title}.")
+            if label.lower() in labels:
+                invalid(f"Les libellés de la répartition par {title} doivent être uniques.")
+            labels.add(label.lower())
+            normalized = {"label": label}
+            has_value = False
+            for metric, metric_title in AUDIENCE_METRICS.items():
+                value = row.get(metric)
+                if value is None:
+                    normalized[metric] = None
+                    continue
+                if (isinstance(value, bool) or not isinstance(value, (int, float))
+                        or value < 0 or value > MAX_NUMBER or not math.isfinite(value) or int(value) != value):
+                    invalid(f"Audience : {metric_title} doit être un entier entre 0 et 9 000 milliards, ou rester vide.")
+                normalized[metric] = int(value)
+                sums[metric] += int(value)
+                has_value = True
+            if has_value:
+                result[dimension].append(normalized)
+        for metric, metric_title in AUDIENCE_METRICS.items():
+            if totals.get(metric) is not None and sums[metric] > totals[metric]:
+                invalid(f"La somme des {metric_title} par {title} dépasse le total de la campagne.")
+    return result
 
 
 def validate_campaign(payload):
@@ -83,6 +145,7 @@ def validate_campaign(payload):
     result["status"] = status
     if errors:
         raise APIError(422, "Vérifiez les champs du formulaire.", fields=errors)
+    result["audience"] = validate_audience(payload.get("audience"), result)
     result["ctr"] = round(result["clicks"] / result["impressions"] * 100, 6) if result["impressions"] else None
     result["frequency"] = campaign_frequency(result)
     result["source"] = "manual"
@@ -102,6 +165,7 @@ def campaign_record(encoded):
     record = json.loads(encoded)
     record.pop("trueviews", None)
     record.setdefault("reach", None)
+    record.setdefault("audience", empty_audience())
     record["frequency"] = campaign_frequency(record)
     return record
 
@@ -160,10 +224,14 @@ class CampaignStore:
                     raise APIError(409, "Cette campagne a été modifiée. Rechargez sa dernière version.", current=current)
                 if archive:
                     record = {**current, "status": "archived"}
-                elif "reach" not in payload:
-                    # An older open editor cannot clear a metric it does not know about.
-                    record["reach"] = current["reach"]
-                    record["frequency"] = campaign_frequency(record)
+                else:
+                    if "reach" not in payload:
+                        # An older open editor cannot clear a metric it does not know about.
+                        record["reach"] = current["reach"]
+                        record["frequency"] = campaign_frequency(record)
+                    if "audience" not in payload:
+                        record["audience"] = current["audience"]
+                    record["audience"] = validate_audience(record["audience"], record)
                 record.update(id=campaign_id, revision=revision + 1, createdAt=current["createdAt"], updatedAt=now)
             else:
                 record.update(id=str(uuid.uuid4()), revision=1, createdAt=now, updatedAt=now)

@@ -73,7 +73,17 @@
           <article class="panel budget-panel"><div class="panel-heading"><div><h2>Répartition du budget</h2><p>Enveloppe média · Oct.–Déc. 2026</p></div><svg class="icon muted"><use href="#i-wallet"/></svg></div><div class="budget-total"><strong id="total-budget">138 000</strong><span>DH HT prévus</span></div><div class="budget-stacked" id="budget-stacked" aria-hidden="true"></div><div id="budget-legend"></div><div class="budget-foot"><span>Dépenses de la période</span><strong id="budget-spend">—</strong></div><p class="budget-note">Hors influence et frais de gestion.</p></article>
         </section>
 
-        <section class="audience-section" aria-labelledby="audience-title"><div class="section-heading"><div><h2 id="audience-title">Votre audience<span class="section-dot">.</span></h2><p>Où votre campagne est vue, et par qui.</p></div><div class="audience-controls"><span>Répartition des</span><div class="select-wrap"><select id="audience-metric" aria-label="Mesure de l’audience"><option value="impressions">Impressions</option><option value="clicks">Clics</option></select></div></div></div><div id="audience-charts" class="audience-grid"></div><p class="audience-footnote">Répartitions simulées de la mesure sélectionnée, pas de visiteurs uniques. Chaque dimension comprend les données non renseignées.</p></section>
+        <section class="audience-section" aria-labelledby="audience-title">
+          <div class="section-heading">
+            <div><h2 id="audience-title">Votre audience<span class="section-dot">.</span></h2><p>Vos résultats par sexe, tranche d’âge et ville.</p></div>
+            <div class="audience-controls">
+              <div class="select-wrap"><select id="audience-metric" aria-label="Mesure de l’audience"><option value="impressions">Impressions</option><option value="clicks">Clics</option><option value="reach">Reach</option></select></div>
+              <div class="segmented audience-view-switch" role="group" aria-label="Présentation de l’audience"><button type="button" data-audience-view="charts" class="selected" aria-pressed="true" aria-controls="audience-charts">Graphiques</button><button type="button" data-audience-view="tables" aria-pressed="false" aria-controls="audience-charts">Tableaux</button></div>
+            </div>
+          </div>
+          <div id="audience-charts" class="audience-grid"></div>
+          <p class="audience-footnote"></p>
+        </section>
       </div>
 
       <section class="panel results-panel" aria-labelledby="results-title"><div class="panel-heading"><div><h2 id="results-title">Performances par plateforme</h2><p id="results-description">Le détail de vos résultats sur la période sélectionnée.</p></div><button class="text-link" id="show-campaigns">Toutes les campagnes <svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="table-scroll"><table id="results-table"><caption class="sr-only">Résultats simulés par plateforme</caption><thead id="results-head"></thead><tbody id="results-body"></tbody></table></div><div class="empty-state" id="empty-state" hidden><span class="empty-icon"><svg class="icon"><use href="#i-campaign"/></svg></span><h3>Aucune campagne en cours</h3><p id="empty-description">Les résultats apparaîtront ici dès le lancement d’une campagne.</p><button class="text-link" id="back-overview">Revenir au dashboard <svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="table-note" id="table-note"><svg class="icon"><use href="#i-help"/></svg>Les vues vidéo suivent la définition de chaque plateforme ; elles ne sont pas comparables directement.</div></section>

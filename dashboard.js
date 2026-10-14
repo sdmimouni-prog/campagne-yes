@@ -11,8 +11,8 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp
 const icons = {meta:'∞',youtube:'▶',tiktok:'♪',display:'▣'};
 const channelLabels={facebook:'Facebook',instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok',display:'Display'};
 const channelNames = {meta:'Meta · Facebook & Instagram',youtube:'YouTube',tiktok:'TikTok',influence:'Influence',display:'Display',sms:'SMS',whatsapp:'WhatsApp',email:'Emailing'};
-const metricNames = {impressions:'Impressions',clicks:'Clics',spend:'Dépenses'};
-const state = {view:'overview',period:'oct',platform:'all',campaign:'all',trend:'impressions',audience:'impressions'};
+const metricNames = {impressions:'Impressions',clicks:'Clics',reach:'Reach',spend:'Dépenses'};
+const state = {view:'overview',period:'oct',platform:'all',campaign:'all',trend:'impressions',audience:'impressions',audienceView:'charts'};
 let summary, audience, resizeTimer, exportUrl, loading=null, initialized=false;
 let accessGeneration=0, loggingOut=false;
 const manual = () => getReportingState().mode==='manual';
@@ -100,8 +100,15 @@ function renderCharts() {
   if(manual()&&(summary.timelineUnavailable||missingMetric)) {
     $('trend-chart').innerHTML=`<div class="chart-empty"><span class="chart-empty-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>${summary.timelineUnavailable?'Détail quotidien non renseigné':'Dépenses non renseignées'}</strong><p>${summary.timelineUnavailable?'Les chiffres saisis sont des totaux sur une période. Une courbe nécessite les résultats jour par jour.':'Renseignez les dépenses pour afficher leur évolution.'}</p></div>`;
   }
-  renderAudience($('audience-charts'),audience,{metric:state.audience});
-  document.querySelector('.audience-footnote').textContent=manual()?'Les répartitions par ville, sexe et âge ne sont pas disponibles dans les totaux saisis. Elles apparaîtront lorsqu’une source fournira ces informations.':'Répartitions simulées de la mesure sélectionnée, pas de visiteurs uniques. Chaque dimension comprend les données non renseignées.';
+  renderAudience($('audience-charts'),audience,{metric:state.audience,view:state.audienceView});
+  document.querySelectorAll('[data-audience-view]').forEach(button=>{
+    const selected=button.dataset.audienceView===state.audienceView;
+    button.classList.toggle('selected',selected);
+    button.setAttribute('aria-pressed',String(selected));
+  });
+  document.querySelector('.audience-footnote').textContent=manual()
+    ? 'Répartitions renseignées pour les filtres sélectionnés. Chaque dimension est indépendante : ne pas additionner sexe, âge et ville. Les parts utilisent le total de la mesure, ou les données renseignées si le total Reach est inconnu. Le Reach se consulte campagne par campagne pour éviter les doublons.'
+    : 'Répartitions de démonstration pour les impressions et les clics. Le Reach unique n’est pas disponible dans ce jeu simulé. Chaque dimension est indépendante.';
 }
 function platformCell(platform,name,subtitle='') {
   return `<div class="platform-cell"><span class="platform-badge ${platform}">${icons[platform]||'·'}</span><span>${esc(name)}${subtitle?`<small class="platform-sub">${esc(subtitle)}</small>`:''}</span></div>`;
@@ -137,8 +144,9 @@ function renderInsight() {
     $('insight-text').innerHTML=topChannel?`<strong>${esc(topChannel.shortName)}</strong> totalise ${number.format(topChannel.impressions)} impressions sur la sélection. Le CTR global est de <strong>${ctr(summary.totals.clicks,summary.totals.impressions)}</strong>. Les chiffres correspondent aux totaux renseignés pour ${summary.totals.activeCampaigns} campagne${summary.totals.activeCampaigns>1?'s':''}.`:'Aucun résultat renseigné sur cette sélection.';
     return;
   }
-  if(!firstCity||!topChannel)return;
-  $('insight-text').innerHTML=`Dans cet exemple, <strong>${esc(topChannel.shortName)}</strong> génère le plus d’impressions sur la sélection. <strong>${esc(firstCity.label)}</strong> représente ${pct(firstCity.value,audience.total)} des ${state.audience==='clicks'?'clics':'impressions'}. Les analyses de votre équipe accompagneront vos résultats réels.`;
+  if(!topChannel||topChannel.impressions<=0){$('insight-text').textContent='Aucun résultat sur cette sélection.';return;}
+  const cityInsight=firstCity?.value>0&&audience.total>0?` <strong>${esc(firstCity.label)}</strong> représente ${pct(firstCity.value,audience.total)} des ${state.audience==='clicks'?'clics':'impressions'}.`:'';
+  $('insight-text').innerHTML=`Dans cet exemple, <strong>${esc(topChannel.shortName)}</strong> génère le plus d’impressions sur la sélection.${cityInsight} Les analyses de votre équipe accompagneront vos résultats réels.`;
 }
 function render() {
   summary=getSummary(query());
@@ -192,13 +200,17 @@ function exportReport() {
   else summary.byPlatform.forEach(p=>records.push(['Budget prévu','Octobre–Décembre 2026',p.name,'','','','','Budget trimestre',p.budget,'MAD HT','Plan média fourni']));
   const effectiveCampaign=CAMPAIGNS.find(c=>c.id===state.campaign);
   const audiencePlatform=summary.byPlatform.length===1?summary.byPlatform[0].name:'Tous les canaux';
-  if(summary.rows.length)for(const [key,label]of [['cities','Ville'],['gender','Sexe'],['ages','Âge']])audience[key].forEach(r=>records.push(['Audience',range.label,audiencePlatform,effectiveCampaign?.name||'Toutes les campagnes','',label,r.label,state.audience,r.value,'nombre','DÉMONSTRATION — fictif']));
+  if(summary.rows.length&&!audience.reachRequiresSingleCampaign)for(const [key,label]of [['gender','Sexe'],['ages','Âge'],['cities','Ville']]){
+    const detail=audience.dimensions?.[key];
+    const scope=manual()?`Saisie manuelle — ${detail?.partial?'données partielles — ':''}${detail?.availableCampaigns??0}/${detail?.campaignCount??0} campagnes renseignées — total renseigné : ${detail?.reportedTotal??0} — base des parts : ${detail?.total??audience.total??0}${audience.total==null?' (données renseignées, total Reach inconnu)':' (total sélectionné)'}`:'DÉMONSTRATION — fictif';
+    audience[key].forEach(r=>records.push(['Audience',range.label,audiencePlatform,effectiveCampaign?.name||'Toutes les campagnes','',label,r.label,state.audience,r.value,state.audience==='reach'?'personnes':'nombre',scope]));
+  }
   if(!summary.rows.length)records.push(['Aucune campagne',range.label,channelNames[state.view]||'','','','','','','','','Aucun résultat renseigné']);
   const csv='\uFEFF'+records.map(r=>r.map(v=>`"${(typeof v==='string'&&/^[\s]*[=+@-]/.test(v)?"'"+v:String(v??'')).replace(/"/g,'""')}"`).join(';')).join('\r\n');
   if(exportUrl)URL.revokeObjectURL(exportUrl);
   exportUrl=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const filename=`Richmedia-YES-${manual()?'SAISIE':'DEMONSTRATION'}-${state.view}-${state.period}.csv`;
-  openDialog('Votre rapport est prêt.',`<p><strong>${esc(range.label)} · ${esc(audiencePlatform)}</strong></p><p>${manual()?'Le fichier reprend les totaux cumulés, les périodes et les budgets des campagnes sélectionnées. Les cellules vides correspondent aux données non renseignées.':'Le fichier reprend les résultats quotidiens, le budget prévu et les répartitions d’audience. Les résultats fictifs sont identifiés.'}</p><a class="download-link" href="${exportUrl}" download="${filename}">Télécharger le rapport CSV ${arrow}</a>`);
+  openDialog('Votre rapport est prêt.',`<p><strong>${esc(range.label)} · ${esc(audiencePlatform)}</strong></p><p>${manual()?`Le fichier reprend les totaux cumulés, les périodes, les budgets et les répartitions d’audience disponibles pour la mesure ${esc(metricNames[state.audience])}. La source précise les données partielles. Les cellules vides correspondent aux données non renseignées.${audience.reachRequiresSingleCampaign?' Sélectionnez une seule campagne pour exporter sa répartition du Reach.':''}`:'Le fichier reprend les résultats quotidiens, le budget prévu et les répartitions d’audience disponibles. Les résultats fictifs sont identifiés.'}</p><a class="download-link" href="${exportUrl}" download="${filename}">Télécharger le rapport CSV ${arrow}</a>`);
   $('announcement').textContent='Rapport CSV préparé pour les filtres sélectionnés.';
 }
 
@@ -206,12 +218,13 @@ $('period-filter').addEventListener('change',e=>{state.period=e.target.value;ren
 $('platform-filter').addEventListener('change',e=>{state.platform=e.target.value;state.campaign='all';render();});
 $('campaign-filter').addEventListener('change',e=>{state.campaign=e.target.value;render();});
 $('audience-metric').addEventListener('change',e=>{state.audience=e.target.value;render();});
+document.querySelectorAll('[data-audience-view]').forEach(button=>button.addEventListener('click',()=>{state.audienceView=button.dataset.audienceView;renderCharts();}));
 document.querySelectorAll('[data-trend]').forEach(button=>button.addEventListener('click',()=>{state.trend=button.dataset.trend;renderCharts();}));
 $('results-body').addEventListener('click',e=>{const button=e.target.closest('[data-detail]');if(button)showDetail(button.dataset.detail);});
 $('show-campaigns').addEventListener('click',()=>{location.hash='campaigns';});
 $('back-overview').addEventListener('click',()=>{location.hash='overview';});
 $('export-report').addEventListener('click',exportReport);
-const about=()=>openDialog('Vos données de campagne.',manual()?`<p>Les résultats affichés proviennent des <strong>saisies de l’équipe Richmedia</strong>.</p><ul><li>Chaque campagne contient un total cumulé sur la période indiquée. Une mise à jour remplace le total précédent.</li><li>Un filtre mensuel retient seulement les campagnes dont toute la période de saisie est comprise dans ce mois.</li><li>Les champs inconnus apparaissent avec « — ». Un total incomplet reste non renseigné.</li><li>Le budget est distinct des dépenses réellement saisies.</li><li>Les courbes quotidiennes et profils d’audience nécessitent des données détaillées.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`:`<p>Cet espace présente le suivi de campagne <strong>Richmedia pour YES Baby Comfort</strong>.</p><ul><li>Les résultats et profils actuels sont simulés.</li><li>Les budgets média de Meta 40 000 MAD, YouTube 53 000 MAD et TikTok 45 000 MAD HT proviennent du plan fourni.</li><li>La première campagne enregistrée par l’équipe remplacera ce jeu de démonstration.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`);
+const about=()=>openDialog('Vos données de campagne.',manual()?`<p>Les résultats affichés proviennent des <strong>saisies de l’équipe Richmedia</strong>.</p><ul><li>Chaque campagne contient un total cumulé sur la période indiquée. Une mise à jour remplace le total précédent.</li><li>Un filtre mensuel retient seulement les campagnes dont toute la période de saisie est comprise dans ce mois.</li><li>Les champs inconnus apparaissent avec « — ». Un total incomplet reste non renseigné.</li><li>Le budget est distinct des dépenses réellement saisies.</li><li>Les répartitions par sexe, âge et ville proviennent des détails d’audience renseignés. Une dimension incomplète est signalée.</li><li>Le Reach unique est consultable pour une seule campagne à la fois.</li><li>Les courbes quotidiennes nécessitent des résultats jour par jour.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`:`<p>Cet espace présente le suivi de campagne <strong>Richmedia pour YES Baby Comfort</strong>.</p><ul><li>Les résultats et profils actuels sont simulés.</li><li>Les budgets média de Meta 40 000 MAD, YouTube 53 000 MAD et TikTok 45 000 MAD HT proviennent du plan fourni.</li><li>La première campagne enregistrée par l’équipe remplacera ce jeu de démonstration.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`);
 $('help-button').addEventListener('click',about);
 $('contact-agency').addEventListener('click',()=>openDialog('Votre équipe Richmedia.',`<p>Pour échanger sur votre campagne ou votre accès, contactez votre interlocuteur Richmedia.</p><p><a href="mailto:contact@richmedia.ma">contact@richmedia.ma</a></p><p>Ce lien ouvre votre messagerie. Aucun message n’est envoyé automatiquement.</p>`));
 $('view-creative').addEventListener('click',()=>openDialog('L’univers de campagne YES.',`<p>Visuel extrait du plan média fourni. Sa présence dans cette bibliothèque ne signifie pas qu’il a été diffusé.</p><img src="assets/yes-campaign.png" alt="Page de présentation de la campagne YES Baby Comfort">`));

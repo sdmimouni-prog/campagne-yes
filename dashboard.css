@@ -41,3 +41,30 @@ main .section-heading p,
 main .kpi-bottom {
   color:#766a80;
 }
+
+/* Audience controls, data coverage and accessible tables. */
+.audience-section .section-heading{align-items:flex-start;flex-wrap:wrap}
+.audience-section .audience-controls{flex-wrap:wrap;justify-content:flex-end;gap:10px;color:#766a80}
+.audience-section .audience-controls select{min-width:126px;font-size:10px;color:#554761;height:35px}
+.audience-section .audience-view-switch{align-self:center}
+.audience-section .audience-view-switch button{font-size:10px;padding:7px 10px;color:#766a80;min-height:27px}
+.audience-section .audience-view-switch button.selected{color:#6730cf}
+.audience-section .audience-grid{grid-template-columns:1fr 1.15fr 1.05fr;align-items:stretch}
+.audience-section .audience-card{grid-column:auto}
+.audience-section .audience-footnote{font-size:10px;color:#766a80;line-height:1.7;max-width:1050px}
+.audience-section .audience-card-footer{font-size:9px;color:#766a80;line-height:1.6}
+.audience-section .audience-partial{background:#fbf8ff;color:#72528f}
+.audience-section .audience-table-scroll{margin:0 -10px 18px;overflow-x:auto;scrollbar-width:thin;flex:1}
+.audience-section .audience-table{width:100%;font-size:11px;white-space:normal;table-layout:auto}
+.audience-section .audience-table thead{background:#faf8fd}
+.audience-section .audience-table th,.audience-section .audience-table td{padding:11px 10px;font-size:10px;color:#554761;line-height:1.5}
+.audience-section .audience-table tbody th{font-weight:400;overflow-wrap:anywhere}
+.audience-section .audience-table .numeric{white-space:nowrap;font-variant-numeric:tabular-nums}
+.audience-section .audience-table tfoot{border-top:1px solid #eae3f2;background:#fcfaff}
+.audience-section .audience-table tfoot th,.audience-section .audience-table tfoot td{font-weight:600}
+.audience-section .city-row-label>span{overflow-wrap:anywhere}
+.audience-section .audience-gender-legend small{display:block;color:#766a80}
+.audience-section .chart-empty p{color:#766a80}
+.audience-section .age-column-value{font-size:9px}
+@media(max-width:1100px){.audience-section .audience-grid{grid-template-columns:1fr 1fr}.audience-section .audience-cities{grid-column:1/-1}.audience-section .audience-city-list{grid-template-columns:1fr 1fr;column-gap:24px}}
+@media(max-width:760px){.audience-section .audience-controls{justify-content:flex-start}.audience-section .section-heading{gap:14px}.audience-section .audience-grid{grid-template-columns:1fr}.audience-section .audience-cities{grid-column:auto}.audience-section .audience-city-list{grid-template-columns:1fr}.audience-section .audience-controls select{font-size:11px}.audience-section .audience-view-switch button{font-size:11px}.audience-section .audience-table th,.audience-section .audience-table td{font-size:12px;padding:12px 10px}.audience-section .audience-footnote{font-size:10px}.audience-section .age-column-value{font-size:10px}}

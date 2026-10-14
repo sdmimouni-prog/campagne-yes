@@ -5,4 +5,38 @@
 @media(max-width:370px){.header-inner{padding:16px}.agency-logo{width:122px}.dashboard-link{font-size:9px;gap:8px}main{padding:23px 14px 0}h1{font-size:25px}.editor-intro,form{padding:21px 18px}.section-title{align-items:flex-start;flex-direction:column;gap:0}.section-title>span{margin:-6px 0 12px}.form-actions{flex-direction:column}.form-actions>.primary-button{order:-1}.overview-strip{gap:10px}.overview-strip>div+div{padding-left:10px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 .admin-signout{border:0;background:none;color:#c3afda;font-size:10px;padding:8px 0;white-space:nowrap}
+.audience-editor{border:1px solid #e5dced;border-radius:9px;background:#fff;overflow:hidden}
+.audience-editor summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 18px;background:#faf8fd;cursor:pointer;list-style:none}
+.audience-editor summary::-webkit-details-marker{display:none}
+.audience-editor summary:focus-visible{outline:3px solid #c2a5f9;outline-offset:-3px}
+.audience-editor summary strong{display:block;font-size:12px;color:#493454}
+.audience-editor summary small{display:block;margin-top:5px;font-size:10px;color:#806c90}
+.audience-optional{display:flex;align-items:center;gap:13px;font-size:8px;letter-spacing:.7px;color:#86659f;white-space:nowrap}
+.audience-optional i{font-size:20px;font-style:normal;transition:transform .15s}
+.audience-editor[open] .audience-optional i{transform:rotate(45deg)}
+.audience-editor-content{padding:17px 18px}
+.audience-editor-help{font-size:11px;line-height:1.7;color:#7b678b;margin:0 0 16px}
+.audience-editor-help strong{font-weight:600;color:#584164}
+.audience-editor-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:15px}
+.audience-editor-tabs button{border:1px solid #e6ddee;border-radius:6px;background:#fff;color:#755c88;font-size:11px;padding:9px 12px}
+.audience-editor-tabs button[aria-pressed=true]{background:#f1e9fc;color:#7135bc;border-color:#d7bdf4;font-weight:600}
+.audience-editor-scroll{max-width:100%;overflow-x:auto;border:1px solid #eae2f1;border-radius:7px}
+.audience-editor-table{min-width:460px;table-layout:fixed;white-space:normal}
+.audience-editor-table th,.audience-editor-table td{padding:9px 8px;font-size:11px;border-bottom:1px solid #eee7f4;text-align:left}
+.audience-editor-table thead th{color:#614877;font-weight:600;background:#faf8fd}
+.audience-editor-table th:first-child{width:29%;padding-left:12px}
+.audience-editor-table tbody th{background:#fff;font-weight:500;color:#5d446e;border-top:0}
+.audience-editor-table th:last-child,.audience-editor-table td:last-child{padding-right:12px}
+.audience-editor-table input{margin:0;font-size:12px;height:37px;padding:0 8px}
+.audience-editor-table td:has([data-remove-city]),.audience-editor-table thead th:has(.sr-only){width:38px;padding:0 4px}
+.audience-editor-table:has([data-city-label]){min-width:530px}
+.audience-add-city{margin-top:11px;padding:8px 0;background:none;border:0;color:#7135bc;font-size:11px}
+.audience-remove-city{background:none;border:0;color:#9d738e;font-size:20px;padding:7px}
+.audience-editor-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0 0;padding:13px 0;border-top:1px solid #eee6f4}
+.audience-editor-totals>span{font-size:10px;color:#8c789a}
+.audience-editor-totals strong{display:block;color:#614375;font-size:13px;margin:5px 0;font-variant-numeric:tabular-nums}
+.audience-editor-totals small{font-size:9px;font-weight:400;color:#9482a1}
+.audience-editor-totals .audience-total-error,.audience-editor-totals .audience-total-error strong,.audience-editor-totals .audience-total-error small{color:#a63752}
+.audience-editor-limit{font-size:10px;margin:10px 0 0}
+@media(max-width:760px){.audience-editor summary{padding:15px 12px}.audience-editor-content{padding:14px 12px}.audience-optional{font-size:7px;gap:7px}.audience-editor-tabs button{font-size:10px;padding:8px}.audience-editor-totals{gap:8px}.audience-editor-totals strong{font-size:11px}}
 @media(max-width:760px){.header-inner:has(.admin-signout:not([hidden])){flex-wrap:wrap;gap:12px}.admin-signout{margin-left:auto}}

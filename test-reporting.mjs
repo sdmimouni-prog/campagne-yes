@@ -9,6 +9,7 @@ const record = (id, changes = {}) => ({
   revision: 1, source: 'manual', ...changes,
 });
 const install = campaigns => reporting.setReportingData({ mode: 'manual', campaigns, updatedAt: '2026-10-04T12:00:00Z' });
+const audienceRow = (label, values = {}) => ({ label, impressions: null, clicks: null, reach: null, ...values });
 
 test('manual source replaces all demo campaigns and groups Facebook + Instagram as Meta', () => {
   reporting.setReportingData({ mode: 'demo', campaigns: [], updatedAt: null });
@@ -83,7 +84,15 @@ test('manual totals do not produce invented daily or audience measurements', () 
   install([record('total')]);
   assert.deepEqual(reporting.getSummary().timeline, []);
   assert.equal(reporting.getSummary().timelineUnavailable, true);
-  assert.deepEqual(reporting.getAudience({ metric: 'clicks' }), { total: null, cities: [], gender: [], ages: [] });
+  const audience = reporting.getAudience({ metric: 'clicks' });
+  assert.equal(audience.total, 10);
+  assert.equal(audience.source, 'manual');
+  for (const dimension of ['cities', 'gender', 'ages']) {
+    assert.deepEqual(audience[dimension], []);
+    assert.equal(audience.dimensions[dimension].reportedTotal, 0);
+    assert.equal(audience.dimensions[dimension].availableCampaigns, 0);
+    assert.equal(audience.dimensions[dimension].partial, true);
+  }
   install([
     record('later', { start: '2026-10-04', end: '2026-10-04', impressions: 300 }),
     record('early1', { start: '2026-10-02', end: '2026-10-02', impressions: 100 }),
@@ -211,4 +220,149 @@ test('invalid reach cannot partially replace previously loaded campaign data', (
     assert.equal(reporting.getSummary().totals.reach, 400);
     assert.equal(reporting.getSummary().totals.frequency, 2.5);
   }
+});
+
+test('audience merges known categories while coverage includes campaigns without breakdowns', () => {
+  install([
+    record('fb', { audience: {
+      cities: [audienceRow(' Rabat ', { impressions: 100, clicks: 1 }), audienceRow('Casablanca', { impressions: 500, clicks: 5 })],
+      gender: [audienceRow('Hommes', { impressions: 300 }), audienceRow('Femmes', { impressions: 600 })],
+      ages: [audienceRow('35–44', { impressions: 100 }), audienceRow('18–24', { impressions: 200 })],
+    } }),
+    record('ig', { channel: 'instagram', impressions: 2000, clicks: 20, audience: {
+      cities: [audienceRow('rabat', { impressions: 500, clicks: 4 }), audienceRow('CASABLANCA', { impressions: 1000, clicks: 10 })],
+      gender: [audienceRow('Femmes', { impressions: 1000 }), audienceRow('Hommes', { impressions: 500 })],
+      ages: [audienceRow('65+', { impressions: 100 }), audienceRow('18–24', { impressions: 500 })],
+    } }),
+    record('no-breakdown'),
+  ]);
+  const audience = reporting.getAudience({ metric: 'impressions' });
+  assert.equal(audience.total, 4000);
+  assert.deepEqual(audience.cities, [{ label: 'Casablanca', value: 1500 }, { label: 'Rabat', value: 600 }]);
+  assert.deepEqual(audience.gender, [{ label: 'Femmes', value: 1600 }, { label: 'Hommes', value: 800 }]);
+  assert.deepEqual(audience.ages, [{ label: '18–24', value: 700 }, { label: '35–44', value: 100 }, { label: '65+', value: 100 }]);
+  assert.deepEqual(audience.dimensions.cities, {
+    total: 4000, reportedTotal: 2100, coverage: 0.525, partial: true, availableCampaigns: 2, campaignCount: 3,
+  });
+  const clicks = reporting.getAudience({ metric: 'clicks' });
+  assert.equal(clicks.total, 40);
+  assert.equal(clicks.dimensions.cities.reportedTotal, 20);
+  assert.equal(clicks.dimensions.cities.coverage, 0.5);
+  assert.deepEqual(clicks.gender, []);
+  assert.equal(clicks.dimensions.gender.availableCampaigns, 0);
+});
+
+test('audience uses exactly the summary campaign, platform, archive and whole-period filters', () => {
+  const city = label => ({ cities: [audienceRow(label, { impressions: 100 })] });
+  install([
+    record('october', { audience: city('Octobre') }),
+    record('crossing', { start: '2026-10-20', end: '2026-11-05', audience: city('Chevauchement') }),
+    record('november', { channel: 'youtube', start: '2026-11-01', end: '2026-11-30', audience: city('Novembre') }),
+    record('archived', { status: 'archived', audience: city('Archivée') }),
+  ]);
+  const options = { period: '2026-10', platform: 'meta' };
+  const october = reporting.getAudience(options);
+  assert.deepEqual(october.cities, [{ label: 'Octobre', value: 100 }]);
+  assert.equal(october.total, reporting.getSummary(options).totals.impressions);
+  assert.equal(october.dimensions.cities.campaignCount, 1);
+  assert.deepEqual(reporting.getAudience({ ...options, campaign: 'crossing' }).cities, []);
+  assert.equal(reporting.getAudience({ ...options, campaign: 'crossing' }).dimensions.cities.campaignCount, 0);
+  assert.deepEqual(reporting.getAudience({ period: 'all', campaign: 'crossing' }).cities, [{ label: 'Chevauchement', value: 100 }]);
+  assert.deepEqual(reporting.getAudience({ period: 'all', platform: 'youtube' }).cities, [{ label: 'Novembre', value: 100 }]);
+});
+
+test('audience preserves explicit zeros, omits unknown rows and never fills absent categories', () => {
+  install([record('zero', { impressions: 0, clicks: 0, reach: 0, audience: {
+    gender: [audienceRow('Hommes'), audienceRow('Femmes', { impressions: 0, clicks: 0, reach: 0 })],
+    ages: null,
+  } })]);
+  assert.deepEqual(reporting.CAMPAIGNS[0].audience.gender, [audienceRow('Femmes', { impressions: 0, clicks: 0, reach: 0 })]);
+  const zero = reporting.getAudience();
+  assert.deepEqual(zero.gender, [{ label: 'Femmes', value: 0 }]);
+  assert.deepEqual(zero.ages, []);
+  assert.deepEqual(zero.cities, []);
+  assert.equal(zero.dimensions.gender.total, 0);
+  assert.equal(zero.dimensions.gender.coverage, null);
+  assert.equal(zero.dimensions.gender.partial, false);
+  assert.equal(zero.dimensions.ages.partial, true);
+  assert.deepEqual(reporting.getAudience({ metric: 'reach' }).gender, [{ label: 'Femmes', value: 0 }]);
+  install([record('old'), record('null', { audience: null })]);
+  for (const campaign of reporting.CAMPAIGNS) assert.deepEqual(campaign.audience, { gender: [], ages: [], cities: [] });
+  assert.deepEqual(reporting.getAudience().gender, []);
+});
+
+test('reach audience is available per campaign but cannot be added across campaigns', () => {
+  install([
+    record('fb', { reach: 600, audience: { gender: [audienceRow('Femmes', { reach: 300 }), audienceRow('Hommes', { reach: 200 })] } }),
+    record('ig', { channel: 'instagram', reach: 400, audience: { gender: [audienceRow('Femmes', { reach: 400 })] } }),
+  ]);
+  const combined = reporting.getAudience({ metric: 'reach', platform: 'meta' });
+  assert.equal(combined.reachRequiresSingleCampaign, true);
+  assert.equal(combined.total, null);
+  assert.deepEqual(combined.gender, []);
+  assert.equal(combined.dimensions.gender.total, null);
+  const selected = reporting.getAudience({ metric: 'reach', campaign: 'fb' });
+  assert.equal(selected.reachRequiresSingleCampaign, false);
+  assert.equal(selected.total, 600);
+  assert.deepEqual(selected.gender, [{ label: 'Femmes', value: 300 }, { label: 'Hommes', value: 200 }]);
+  assert.equal(selected.dimensions.gender.reportedTotal, 500);
+  assert.equal(selected.dimensions.gender.coverage, 500 / 600);
+  assert.equal(selected.dimensions.gender.partial, true);
+});
+
+test('unknown overall reach uses each dimension reported total without claiming full coverage', () => {
+  install([record('unknown-reach', { audience: {
+    gender: [audienceRow('Femmes', { reach: 200 }), audienceRow('Hommes', { reach: 100 })],
+    cities: [audienceRow('Rabat', { reach: 120 })],
+  } })]);
+  const audience = reporting.getAudience({ metric: 'reach' });
+  assert.equal(audience.total, null);
+  assert.equal(audience.dimensions.gender.total, 300);
+  assert.equal(audience.dimensions.cities.total, 120);
+  assert.equal(audience.dimensions.gender.coverage, null);
+  assert.equal(audience.dimensions.gender.partial, true);
+  assert.equal(audience.dimensions.gender.availableCampaigns, 1);
+  assert.equal(audience.reachRequiresSingleCampaign, false);
+});
+
+test('audience validation rejects malformed or excessive breakdowns atomically', () => {
+  install([record('known', { audience: { cities: [audienceRow('Rabat', { impressions: 50 })] } })]);
+  const invalidAudiences = [
+    [], 'invalid', { countries: [] }, { gender: {} }, { cities: [null] },
+    { cities: [{ label: 'Rabat', other: 1 }] }, { cities: [{ label: 42 }] },
+    { gender: [audienceRow('Autre', { impressions: 1 })] },
+    { ages: [audienceRow('18-24', { impressions: 1 })] },
+    { cities: [audienceRow('  ', { impressions: 1 })] },
+    { cities: [audienceRow('A'.repeat(81), { impressions: 1 })] },
+    { cities: [audienceRow(' Rabat '), audienceRow('rabat', { impressions: 1 })] },
+    { cities: Array.from({ length: 101 }, (_, index) => audienceRow(`Ville ${index}`, { impressions: 0 })) },
+    ...[-1, 0.5, '5', true, Infinity, 9000000000001].map(impressions => ({ cities: [audienceRow('Rabat', { impressions })] })),
+    { cities: [audienceRow('Rabat', { impressions: 600 }), audienceRow('Fès', { impressions: 500 })] },
+    { gender: [audienceRow('Femmes', { clicks: 11 })] },
+  ];
+  for (const audience of invalidAudiences) {
+    assert.throws(() => install([record('valid-first'), record('bad', { audience })]), /audience.*invalides/);
+    assert.deepEqual(reporting.CAMPAIGNS.map(campaign => campaign.id), ['known']);
+    assert.deepEqual(reporting.getAudience().cities, [{ label: 'Rabat', value: 50 }]);
+  }
+  assert.throws(() => install([record('bad-reach', { reach: 5, audience: { cities: [audienceRow('Rabat', { reach: 6 })] } })]), /audience.*invalides/);
+});
+
+test('demonstration retains simulated breakdowns but never invents reach or leaks into manual data', () => {
+  reporting.setReportingData({ mode: 'demo', campaigns: [], updatedAt: null });
+  const demo = reporting.getAudience({ metric: 'clicks' });
+  assert.equal(demo.source, 'demo');
+  assert.ok(demo.cities.length > 0);
+  assert.equal(demo.gender.reduce((sum, row) => sum + row.value, 0), demo.total);
+  assert.equal(demo.dimensions.gender.coverage, 1);
+  for (const options of [{ metric: 'reach' }, { metric: 'reach', campaign: reporting.CAMPAIGNS[0].id }]) {
+    const reach = reporting.getAudience(options);
+    assert.equal(reach.total, null);
+    assert.deepEqual(reach.cities, []);
+    assert.deepEqual(reach.gender, []);
+    assert.deepEqual(reach.ages, []);
+  }
+  install([record('real')]);
+  assert.equal(reporting.getAudience().source, 'manual');
+  assert.deepEqual(reporting.getAudience().cities, []);
 });

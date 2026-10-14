@@ -6,6 +6,7 @@ const PERCENT = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
 const METRICS = {
   impressions: { label: 'Impressions', unit: 'impressions' },
   clicks: { label: 'Clics', unit: 'clics' },
+  reach: { label: 'Reach', unit: 'personnes' },
   views: { label: 'Vues vidéo', unit: 'vues vidéo' },
   spend: { label: 'Dépenses', unit: 'DH' },
 };
@@ -17,7 +18,7 @@ const format = (value, metric) => `${NUMBER.format(amount(value))}${metric === '
 const metricInfo = (metric) => METRICS[metric] || METRICS.impressions;
 const resolve = (container) => typeof container === 'string' ? document.querySelector(container) : container;
 const ratio = (value, total) => total > 0 ? Math.min(100, amount(value) / total * 100) : 0;
-const safeRows = (rows) => Array.isArray(rows) ? rows.map((row) => ({ label: String(row?.label ?? 'Non renseigné'), value: amount(row?.value) })) : [];
+const safeRows = (rows) => Array.isArray(rows) ? rows.filter(row => Number.isFinite(row?.value) && row.value >= 0).map(row => ({ label: String(row.label ?? 'Non renseigné'), value: row.value })) : [];
 const dateLabel = (value, full = false) => {
   const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
   return Number.isNaN(date.getTime()) ? String(value ?? '') : new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: full ? 'long' : 'short' }).format(date).replace('.', '');
@@ -101,57 +102,84 @@ const ICONS = {
 };
 
 function cardHeader(title, dimension, metric) {
-  return `<div class="audience-card-heading"><div><h3>${escape(title)}</h3><p>Répartition des ${escape(metricInfo(metric).label.toLowerCase())}</p></div><span class="audience-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[dimension]}</svg></span></div>`;
+  const description = metric === 'reach' ? 'Personnes uniques touchées' : `Répartition des ${metricInfo(metric).label.toLowerCase()}`;
+  return `<div class="audience-card-heading"><div><h3>${escape(title)}</h3><p>${escape(description)}</p></div><span class="audience-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[dimension]}</svg></span></div>`;
 }
 
-function cardFooter(rows, total, label) {
-  const sum = rows.reduce((count, row) => count + row.value, 0);
-  const percent = ratio(sum, total);
-  return `<div class="audience-card-footer"><span class="audience-footer-dot" aria-hidden="true"></span>${escape(percent < 99.95 ? `${PERCENT.format(percent)} % des résultats renseignés` : label)}</div>`;
+function audienceContext(audience, dimension, rows) {
+  const details = audience.dimensions?.[dimension];
+  const reportedTotal = rows.reduce((sum, row) => sum + row.value, 0);
+  const total = details ? amount(details.total) : Math.max(amount(audience.total), reportedTotal);
+  return {
+    ...details, total, reportedTotal,
+    source: audience.source === 'manual' ? 'manual' : 'demo',
+    partial: details?.partial ?? reportedTotal < total,
+    reportedBasis: audience.total == null,
+    needsCampaign: Boolean(audience.reachRequiresSingleCampaign),
+  };
+}
+const share = (value, context) => context.total > 0 ? `${PERCENT.format(ratio(value, context.total))} %` : '—';
+
+function cardFooter(context) {
+  const source = context.source === 'manual' ? 'Saisie manuelle' : 'Démonstration';
+  const coverage = context.reportedBasis ? '% des données renseignées' : context.total > 0 ? `Détail sur ${share(context.reportedTotal, context)} du total` : 'Valeurs renseignées à zéro';
+  const campaigns = context.campaignCount > 1 ? ` · ${context.availableCampaigns}/${context.campaignCount} campagnes renseignées` : '';
+  return `<div class="audience-card-footer${context.partial ? ' audience-partial' : ''}"><span class="audience-footer-dot" aria-hidden="true"></span><span>${escape(`${source} · ${context.partial ? 'Données partielles · ' : ''}${coverage}${campaigns}`)}</span></div>`;
 }
 
-function renderCities(input, total, metric) {
-  const rows = [...input].sort((a, b) => b.value - a.value);
-  const max = Math.max(0, ...rows.map((row) => row.value));
-  const content = !rows.length || !max ? emptyChart() : `<ol class="audience-city-list">${rows.map((row, index) => `<li><div class="city-row-label"><span><small>${String(index + 1).padStart(2, '0')}</small>${escape(row.label)}</span><strong>${escape(COMPACT.format(row.value))}<em>${escape(PERCENT.format(ratio(row.value, total)))} %</em></strong></div><div class="audience-city-track" role="img" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${PERCENT.format(ratio(row.value, total))} %`)}"><span style="width:${ratio(row.value, max).toFixed(3)}%;opacity:${Math.max(0.4, 1 - index * 0.12)}"></span></div></li>`).join('')}</ol>`;
-  return `<article class="audience-card audience-cities">${cardHeader('Par ville', 'cities', metric)}${content}${rows.length && max ? cardFooter(rows, total, 'Villes • répartition de démonstration') : ''}</article>`;
+function emptyAudience(context, metric) {
+  const title = context.needsCampaign ? 'Sélectionnez une campagne' : metric === 'reach' && context.source === 'demo' ? 'Reach non disponible' : 'Aucune audience renseignée';
+  const description = context.needsCampaign ? 'Le Reach ne s’additionne pas entre campagnes. Choisissez une campagne dans le filtre pour consulter sa répartition.' : context.source === 'manual' ? 'Les répartitions saisies dans le back-office apparaîtront ici pour cette mesure et cette sélection.' : 'Aucune répartition disponible pour cette mesure et cette sélection.';
+  return `<div class="chart-empty"><span class="chart-empty-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>${escape(title)}</strong><p>${escape(description)}</p></div>`;
 }
 
-function renderGender(rows, total, metric) {
-  const sum = rows.reduce((count, row) => count + row.value, 0);
-  let content = emptyChart();
-  if (sum > 0) {
-    const radius = 61, circumference = 2 * Math.PI * radius;
-    let offset = 0;
-    const segments = rows.map((row, index) => {
-      const fraction = ratio(row.value, total) / 100;
-      const segment = `<circle cx="90" cy="90" r="${radius}" fill="none" stroke="${COLORS[index % COLORS.length]}" stroke-width="22" stroke-dasharray="${Math.max(0, fraction * circumference - (fraction > .01 ? 2 : 0))} ${circumference}" stroke-dashoffset="${-offset * circumference}" transform="rotate(-90 90 90)"/>`;
-      offset += fraction;
-      return segment;
-    }).join('');
-    const main = rows.reduce((best, row) => row.value > best.value ? row : best, rows[0]);
-    const description = rows.map((row) => `${row.label} : ${format(row.value, metric)}, ${PERCENT.format(ratio(row.value, total))} %`).join('. ');
-    content = `<div class="audience-donut-wrap"><svg class="audience-donut" viewBox="0 0 180 180" role="img" aria-label="${escape(description)}"><circle cx="90" cy="90" r="${radius}" fill="none" stroke="#f2eff6" stroke-width="22"/>${segments}<text x="90" y="90" text-anchor="middle" class="audience-donut-value">${escape(PERCENT.format(ratio(main.value, total)))} %</text><text x="90" y="110" text-anchor="middle" class="audience-donut-label">${escape(main.label)}</text></svg></div><ul class="audience-gender-legend">${rows.map((row, index) => `<li><span><i style="background:${COLORS[index % COLORS.length]}" aria-hidden="true"></i>${escape(row.label)}</span><span><small>${escape(COMPACT.format(row.value))}</small><strong>${escape(PERCENT.format(ratio(row.value, total)))} %</strong></span></li>`).join('')}</ul>`;
-  }
-  return `<article class="audience-card audience-gender">${cardHeader('Par sexe', 'gender', metric)}${content}${sum ? cardFooter(rows, total, 'Profils • données de démonstration') : ''}</article>`;
+function renderAudienceTable(rows, context, metric, title) {
+  return `<div class="audience-table-scroll"><table class="audience-table"><caption class="sr-only">${escape(`${title} · ${metricInfo(metric).label}`)}</caption><thead><tr><th scope="col">Catégorie</th><th scope="col" class="numeric">${escape(metricInfo(metric).label)}</th><th scope="col" class="numeric">Part</th></tr></thead><tbody>${rows.map(row => `<tr><th scope="row">${escape(row.label)}</th><td class="numeric">${escape(NUMBER.format(row.value))}</td><td class="numeric">${escape(share(row.value, context))}</td></tr>`).join('')}</tbody><tfoot><tr><th scope="row">Total renseigné</th><td class="numeric">${escape(NUMBER.format(context.reportedTotal))}</td><td class="numeric">${escape(share(context.reportedTotal, context))}</td></tr></tfoot></table></div>`;
 }
 
-function renderAges(rows, total, metric) {
-  const maximum = Math.max(0, ...rows.map((row) => row.value));
-  let content = emptyChart();
-  if (maximum > 0) {
-    const winningIndex = rows.findIndex((row) => row.value === maximum);
-    content = `<div class="audience-age-chart" role="group" aria-label="Répartition par tranche d’âge"><div class="age-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="age-columns">${rows.map((row, index) => `<div class="age-column ${index === winningIndex ? 'age-column-leading' : ''}" tabindex="0" role="img" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${PERCENT.format(ratio(row.value, total))} %`)}"><div class="age-column-bar-space"><div class="age-column-bar" style="height:${Math.max(1, row.value / maximum * 83).toFixed(3)}%"><span class="age-column-value">${escape(PERCENT.format(ratio(row.value, total)))}<small>%</small></span></div></div><span class="age-column-label">${escape(row.label)}</span><span class="age-column-tooltip">${escape(format(row.value, metric))}</span></div>`).join('')}</div></div><div class="audience-age-insight"><span class="age-insight-icon" aria-hidden="true">↗</span><p><strong>${escape(rows[winningIndex].label)}</strong><span>La tranche d’âge la plus représentée</span></p><b>${escape(PERCENT.format(ratio(maximum, total)))} %</b></div>`;
-  }
-  return `<article class="audience-card audience-ages">${cardHeader('Par tranche d’âge', 'ages', metric)}${content}${maximum ? cardFooter(rows, total, 'Tranches d’âge • données de démonstration') : ''}</article>`;
+function renderCities(rows, context, metric) {
+  const max = Math.max(0, ...rows.map(row => row.value));
+  return `<ol class="audience-city-list">${rows.map((row, index) => `<li><div class="city-row-label"><span><small>${String(index + 1).padStart(2, '0')}</small>${escape(row.label)}</span><strong title="${escape(NUMBER.format(row.value))}">${escape(COMPACT.format(row.value))}<em>${escape(share(row.value, context))}</em></strong></div><div class="audience-city-track" role="img" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`)}"><span style="width:${ratio(row.value, max).toFixed(3)}%;opacity:${Math.max(0.4, 1 - index * 0.12)}"></span></div></li>`).join('')}</ol>`;
 }
 
-/** Render the three audience cards using only supplied, nonnegative numbers. */
-export function renderAudience(container, audience = {}, { metric = 'impressions' } = {}) {
+function renderGender(rows, context, metric) {
+  const radius = 61, circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const segments = rows.map((row, index) => {
+    const fraction = ratio(row.value, context.total) / 100;
+    const segment = `<circle cx="90" cy="90" r="${radius}" fill="none" stroke="${COLORS[index % COLORS.length]}" stroke-width="22" stroke-dasharray="${Math.max(0, fraction * circumference - (fraction > .01 ? 2 : 0))} ${circumference}" stroke-dashoffset="${-offset * circumference}" transform="rotate(-90 90 90)"/>`;
+    offset += fraction;
+    return segment;
+  }).join('');
+  const main = context.reportedTotal > 0 ? rows.reduce((best, row) => row.value > best.value ? row : best, rows[0]) : null;
+  const description = rows.map(row => `${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`).join('. ');
+  return `<div class="audience-donut-wrap"><svg class="audience-donut" viewBox="0 0 180 180" role="img" aria-label="${escape(description)}"><circle cx="90" cy="90" r="${radius}" fill="none" stroke="#f2eff6" stroke-width="22"/>${segments}<text x="90" y="90" text-anchor="middle" class="audience-donut-value">${escape(main ? share(main.value, context) : '0')}</text><text x="90" y="110" text-anchor="middle" class="audience-donut-label">${escape(main ? main.label : metricInfo(metric).unit)}</text></svg></div><ul class="audience-gender-legend">${rows.map((row, index) => `<li><span><i style="background:${COLORS[index % COLORS.length]}" aria-hidden="true"></i>${escape(row.label)}</span><span><small title="${escape(NUMBER.format(row.value))}">${escape(COMPACT.format(row.value))}</small><strong>${escape(share(row.value, context))}</strong></span></li>`).join('')}</ul>`;
+}
+
+function renderAges(rows, context, metric) {
+  const maximum = Math.max(0, ...rows.map(row => row.value));
+  const winningIndex = maximum > 0 ? rows.findIndex(row => row.value === maximum) : -1;
+  const winners = rows.filter(row => maximum > 0 && row.value === maximum);
+  const chart = `<div class="audience-age-chart" role="group" aria-label="Répartition par tranche d’âge"><div class="age-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="age-columns">${rows.map((row, index) => `<div class="age-column ${index === winningIndex ? 'age-column-leading' : ''}" tabindex="0" role="img" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`)}"><div class="age-column-bar-space"><div class="age-column-bar" style="height:${(maximum > 0 ? row.value / maximum * 83 : 0).toFixed(3)}%"><span class="age-column-value">${escape(share(row.value, context))}</span></div></div><span class="age-column-label">${escape(row.label)}</span><span class="age-column-tooltip">${escape(format(row.value, metric))}</span></div>`).join('')}</div></div>`;
+  const insight = winners.length === 1 ? `<div class="audience-age-insight"><span class="age-insight-icon" aria-hidden="true">↗</span><p><strong>${escape(winners[0].label)}</strong><span>En tête des données renseignées</span></p><b>${escape(share(maximum, context))}</b></div>` : '';
+  return chart + insight;
+}
+
+/** Render supplied audience results as charts or accessible numeric tables. */
+export function renderAudience(container, audience = {}, { metric = 'impressions', view = 'charts' } = {}) {
   const target = resolve(container);
   if (!target) return;
-  const cities = safeRows(audience?.cities), gender = safeRows(audience?.gender), ages = safeRows(audience?.ages);
-  const totalFor = (rows) => Math.max(amount(audience?.total), rows.reduce((sum, row) => sum + row.value, 0));
+  const cards = [
+    { dimension: 'gender', title: 'Par sexe', chart: renderGender },
+    { dimension: 'ages', title: 'Par tranche d’âge', chart: renderAges },
+    { dimension: 'cities', title: 'Par ville', chart: renderCities },
+  ];
   target.classList.add('audience-grid');
-  target.innerHTML = renderCities(cities, totalFor(cities), metric) + renderGender(gender, totalFor(gender), metric) + renderAges(ages, totalFor(ages), metric);
+  target.innerHTML = cards.map(({ dimension, title, chart }) => {
+    const rows = audience.reachRequiresSingleCampaign ? [] : safeRows(audience[dimension]);
+    if (dimension === 'cities') rows.sort((a, b) => b.value - a.value);
+    const context = audienceContext(audience, dimension, rows);
+    const content = !rows.length ? emptyAudience(context, metric) : view === 'tables' ? renderAudienceTable(rows, context, metric, title) : chart(rows, context, metric);
+    return `<article class="audience-card audience-${dimension}">${cardHeader(title, dimension, metric)}${content}${rows.length ? cardFooter(context) : ''}</article>`;
+  }).join('');
 }

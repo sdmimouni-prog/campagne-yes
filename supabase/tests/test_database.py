@@ -19,6 +19,20 @@ OTHER_ADMIN = "44444444-4444-4444-8444-444444444444"
 SQL_FILE = Path(__file__).resolve().parents[1] / "migrations/202610040001_portal.sql"
 REACH_MIGRATION = SQL_FILE.parent / "202610140001_campaign_reach_frequency.sql"
 RETIRE_MIGRATION = SQL_FILE.parent / "202610140002_remove_trueviews.sql"
+AUDIENCE_MIGRATION = SQL_FILE.parent / "202610140003_campaign_audience.sql"
+EMPTY_AUDIENCE = {"gender": [], "ages": [], "cities": []}
+AUDIENCE_INPUT = {
+    "gender": [{"label": "Femmes", "impressions": 2400, "clicks": 12, "reach": 1200},
+               {"label": "Hommes", "impressions": 1600, "clicks": 0}, {"label": "Non renseigné"}],
+    "ages": [{"label": "25–34", "impressions": 3000, "reach": 1500}],
+    "cities": [{"label": "  Casablanca \t", "impressions": 2000, "clicks": 5}],
+}
+AUDIENCE = {
+    "gender": [{"label": "Femmes", "impressions": 2400, "clicks": 12, "reach": 1200},
+               {"label": "Hommes", "impressions": 1600, "clicks": 0, "reach": None}],
+    "ages": [{"label": "25–34", "impressions": 3000, "clicks": None, "reach": 1500}],
+    "cities": [{"label": "Casablanca", "impressions": 2000, "clicks": 5, "reach": None}],
+}
 BASE = {
     "channel": "facebook", "name": "YES · Octobre", "start": "2026-10-01",
     "end": "2026-10-31", "budget": 10000.25, "impressions": 4000, "clicks": 20,
@@ -82,6 +96,9 @@ class DatabaseTests(unittest.TestCase):
             cls.after_retirement = json.loads(cls.run_sql("select portal_private.campaign_json(c) from public.portal_campaigns c;"))
             cls.retired_storage = cls.run_sql("select trueviews from public.portal_campaigns;")
             cls.retired_history = json.loads(cls.run_sql("select record from public.portal_campaign_history;"))
+            cls.run_sql(AUDIENCE_MIGRATION.read_text())
+            cls.after_audience_upgrade = json.loads(cls.run_sql("select portal_private.campaign_json(c) from public.portal_campaigns c;"))
+            cls.audience_upgrade_history = json.loads(cls.run_sql("select record from public.portal_campaign_history;"))
             cls.run_sql(f"""
               insert into auth.users(id, email) values
                 ('{ADMIN}', 'admin@example.invalid'), ('{VIEWER}', 'viewer@example.invalid'),
@@ -149,6 +166,88 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(self.after_retirement, {k: v for k, v in self.after_upgrade.items() if k != "trueviews"})
         self.assertEqual(self.retired_storage, "321")
         self.assertEqual(self.retired_history, self.before_upgrade)
+        self.assertEqual(self.after_audience_upgrade, {**self.after_retirement, "audience": EMPTY_AUDIENCE})
+        self.assertEqual(self.audience_upgrade_history, self.before_upgrade)
+
+    def test_audience_persistence_legacy_edits_archive_restore_clear_and_audit(self):
+        c = self.save({**BASE, "reach": 2000, "audience": AUDIENCE_INPUT})["campaign"]
+        self.assertEqual(c["audience"], AUDIENCE)
+        self.assertEqual(self.listing(user=VIEWER)["campaigns"], [c])
+        for changes in ({"impressions": 3999}, {"clicks": 11}, {"reach": 1199}):
+            with self.subTest(changes=changes):
+                error = self.save({**BASE, "revision": 1, **changes}, c["id"])
+                self.assertEqual(error["status"], 422)
+                self.assertIn("audience", error["fields"])
+        self.assertEqual(self.listing()["campaigns"], [c])
+        self.assertEqual(self.run_sql("select count(*) from public.portal_campaign_history;"), "1")
+        edited = self.save({**BASE, "revision": 1, "impressions": 8000}, c["id"])["campaign"]
+        self.assertEqual(edited["audience"], AUDIENCE)
+        self.assertEqual(edited["reach"], 2000)
+        conflict = self.save({**BASE, "revision": 1}, c["id"])
+        self.assertEqual(conflict["status"], 409)
+        self.assertEqual(conflict["current"]["audience"], AUDIENCE)
+        archived = self.save({"revision": 2}, c["id"], archive=True)["campaign"]
+        self.assertEqual(archived["audience"], AUDIENCE)
+        self.assertEqual(self.listing(user=VIEWER)["campaigns"], [])
+        restored = self.save({**BASE, "revision": 3}, c["id"])["campaign"]
+        self.assertEqual(restored["audience"], AUDIENCE)
+        cleared = self.save({**BASE, "revision": 4, "audience": None, "impressions": 0, "clicks": 0, "reach": 0}, c["id"])["campaign"]
+        self.assertEqual(cleared["audience"], EMPTY_AUDIENCE)
+        history = json.loads(self.run_sql("select jsonb_agg(record->'audience' order by id) from public.portal_campaign_history;"))
+        self.assertEqual(history, [AUDIENCE] * 4 + [EMPTY_AUDIENCE])
+
+    def test_audience_unknown_zero_boundaries_and_dimension_sums(self):
+        self.assertEqual(self.save()["campaign"]["audience"], EMPTY_AUDIENCE)
+        for audience in (None, {}, {"gender": None, "ages": None, "cities": None}):
+            with self.subTest(audience=audience):
+                self.assertEqual(self.save({**BASE, "audience": audience})["campaign"]["audience"], EMPTY_AUDIENCE)
+        c = self.save({**BASE, "impressions": 0, "clicks": 0, "audience": {
+            "gender": [{"label": "Femmes", "impressions": 0, "clicks": 0, "reach": 100}],
+            "ages": [{"label": "65+", "reach": None}],
+        }})["campaign"]
+        self.assertEqual(c["audience"], {
+            **EMPTY_AUDIENCE, "gender": [{"label": "Femmes", "impressions": 0, "clicks": 0, "reach": 100}],
+        })
+        boundary = self.save({**BASE, "impressions": 9000000000000, "audience": {
+            "cities": [{"label": "x" * 80, "impressions": 9000000000000}],
+        }})["campaign"]
+        self.assertEqual(boundary["audience"]["cities"][0]["impressions"], 9000000000000)
+        hundred = self.save({**BASE, "audience": {"cities": [{"label": str(i), "clicks": 0} for i in range(100)]}})["campaign"]
+        self.assertEqual(len(hundred["audience"]["cities"]), 100)
+
+    def test_invalid_audience_is_rejected_without_storage_changes(self):
+        invalid = [[], "audience", 0, {"other": []}, {"gender": {}}, {"ages": [None]},
+                   {"gender": [{"label": "femmes", "clicks": 0}]},
+                   {"ages": [{"label": "25-34", "clicks": 0}]},
+                   {"cities": [{"label": " "}]}, {"cities": [{"label": "x" * 81}]},
+                   {"cities": [{"label": "Rabat", "views": 2}]},
+                   {"cities": [{"label": "Rabat"}, {"label": " rabat "}]},
+                   {"cities": [{"label": str(i)} for i in range(101)]},
+                   {"gender": [{"label": "Femmes", "impressions": 2400}, {"label": "Hommes", "impressions": 1601}]},
+                   {"ages": [{"label": "18–24", "clicks": 21}]},
+                   {"cities": [{"label": "Rabat", "reach": 2001}]}]
+        for metric in ("impressions", "clicks", "reach"):
+            for value in (-1, 0.5, True, "10", [], {}, 9000000000001):
+                invalid.append({"cities": [{"label": "Rabat", metric: value}]})
+        for audience in invalid:
+            with self.subTest(audience=audience):
+                error = self.save({**BASE, "reach": 2000, "audience": audience})
+                self.assertEqual(error["status"], 422)
+                self.assertIn("audience", error["fields"])
+        self.assertEqual(self.listing()["campaigns"], [])
+        self.assertEqual(self.run_sql("select count(*) from public.portal_campaign_history;"), "0")
+
+    def test_audience_table_constraint_and_private_validator(self):
+        c = self.save({**BASE, "reach": 2000, "audience": AUDIENCE_INPUT})["campaign"]
+        self.run_sql("update public.portal_campaigns set audience = '{}'::jsonb;", expected_error="23514")
+        self.run_sql("update public.portal_campaigns set audience = '[]'::jsonb;", expected_error="23514")
+        self.run_sql("update public.portal_campaigns set impressions = 3999;", expected_error="23514")
+        self.run_sql("update public.portal_campaigns set clicks = 11;", expected_error="23514")
+        self.run_sql("update public.portal_campaigns set reach = 1199;", expected_error="23514")
+        for user in (ADMIN, VIEWER):
+            self.run_sql("select portal_private.validate_audience(null,0,0,null);", user=user, expected_error="42501")
+            self.run_sql("update public.portal_campaigns set audience = '{}'::jsonb;", user=user, expected_error="42501")
+        self.assertEqual(self.listing()["campaigns"], [c])
 
     def test_retired_metric_is_ignored_hidden_and_preserved_in_storage(self):
         c = self.save({**BASE, "reach": 2000, "trueviews": "retired"})["campaign"]
@@ -315,8 +414,8 @@ class DatabaseTests(unittest.TestCase):
                                      "('portal_clients','portal_memberships','portal_campaigns','portal_campaign_history') and relrowsecurity;"), "4")
         self.assertEqual(self.run_sql("select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
                                      "where n.nspname in ('public','portal_private') and p.proname in "
-                                     "('portal_list_campaigns','portal_save_campaign','campaign_json','audit_campaign','validate_campaign') "
-                                     "and array_to_string(p.proconfig,',') = 'search_path=\"\"';"), "5")
+                                     "('portal_list_campaigns','portal_save_campaign','campaign_json','audit_campaign','validate_campaign','validate_audience') "
+                                     "and array_to_string(p.proconfig,',') = 'search_path=\"\"';"), "6")
         c = self.save()["campaign"]
         self.run_sql(f"update public.portal_campaigns set spend = 'NaN'::numeric where id={literal(c['id'])};", expected_error="23514")
         self.run_sql(f"update public.portal_campaigns set budget = 0.001 where id={literal(c['id'])};", expected_error="23514")

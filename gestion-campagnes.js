@@ -1,7 +1,9 @@
 import { getCampaigns, saveCampaign, requireAccess, getPortalMode, signOut, onSessionChange } from './portal-service.js';
+import { createAudienceEditor } from './audience-editor.js';
 
 const $ = id => document.getElementById(id);
 const form = $('campaign-form');
+const audienceEditor = createAudienceEditor($('audience-editor'));
 const names = {facebook:'Facebook',instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok',display:'Display'};
 const integers = ['impressions','reach','clicks','views','interactions'];
 const numeric = ['budget','spend',...integers];
@@ -40,10 +42,11 @@ function updateCalculatedMetrics() {
   $('ctr').value=ctr(clicks,impressions);
   const frequency=Number.isFinite(impressions)&&impressions>=0&&Number.isFinite(reach)&&reach>0?impressions/reach:null;
   $('frequency').value=frequency==null?'—':`${percent.format(frequency)} fois`;
+  audienceEditor.updateTotals({impressions,clicks,reach});
 }
-function clearValidation() {fields.forEach(name=>form.elements.namedItem(name).setCustomValidity(''));}
+function clearValidation() {fields.forEach(name=>form.elements.namedItem(name).setCustomValidity(''));audienceEditor.clearErrors();}
 function resetForm() {
-  editing=null;form.reset();clearValidation();dirty=false;
+  editing=null;form.reset();clearValidation();audienceEditor.load();dirty=false;
   const today=new Date(), localDate=new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
   $('start').value=localDate.slice(0,8)+'01';$('end').value=localDate;
   $('form-title').innerHTML='Nouvelle campagne<span>.</span>';
@@ -55,6 +58,7 @@ function edit(record) {
   if(!canDiscard())return;
   editing={...record};clearValidation();
   fields.forEach(name=>{form.elements.namedItem(name).value=record[name]??'';});
+  audienceEditor.load(record.audience);
   dirty=false;
   $('form-title').innerHTML='Modifier la campagne<span>.</span>';
   $('form-intro').textContent='Modifiez les informations et les résultats de cette campagne, puis enregistrez vos modifications.';
@@ -93,14 +97,17 @@ form.addEventListener('submit',async event=>{
   clearValidation();
   if($('end').value<$('start').value)$('end').setCustomValidity('La date de fin doit être égale ou postérieure à la date de début.');
   $('campaign-name').value=$('campaign-name').value.trim();
+  let audienceData;
+  try{audienceData=audienceEditor.read();}catch(error){notice(error.message,true);return;}
   if(!form.reportValidity())return;
   const payload=Object.fromEntries(fields.map(name=>{const value=form.elements.namedItem(name).value;return [name,numeric.includes(name)?(value===''?null:Number(value)):value];}));
+  payload.audience=audienceData;
   if(editing)payload.revision=editing.revision;
   const wasEditing=Boolean(editing);setBusy(true);notice('');
   try {
     const data=await request(editing?`/api/campaigns/${editing.id}`:'/api/campaigns',editing?'PUT':'POST',payload);
     if(!acceptSaved(data,generation))return;
-    editing={...data.campaign};dirty=false;
+    editing={...data.campaign};audienceEditor.load(data.campaign.audience);dirty=false;
     $('form-title').innerHTML='Modifier la campagne<span>.</span>';
     $('form-intro').textContent='Modifiez les informations et les résultats de cette campagne, puis enregistrez vos modifications.';
     notice(wasEditing?'Campagne modifiée. Le dashboard affiche les informations mises à jour.':'Campagne enregistrée. Ses chiffres sont maintenant disponibles dans le dashboard.');
@@ -108,7 +115,7 @@ form.addEventListener('submit',async event=>{
     if(!canApply(generation))return;
     if(error.status===401||error.status===403){denyAccess(error);return;}
     notice(error.status===409?'Cette campagne a été modifiée dans une autre fenêtre. Votre saisie est conservée. Copiez vos changements puis rechargez la page pour repartir de la dernière version.':error.message,true);
-    if(error.fields)Object.entries(error.fields).forEach(([name,message])=>{const control=form.elements.namedItem(name);control?.setCustomValidity(message);});
+    if(error.fields)Object.entries(error.fields).forEach(([name,message])=>{if(name==='audience'){audienceEditor.showError(message);return;}const control=form.elements.namedItem(name);control?.setCustomValidity(message);});
   } finally {if(canApply(generation))setBusy(false);}
 });
 $('reset-form').addEventListener('click',()=>{if(canDiscard()){resetForm();$('channel').focus();}});
@@ -147,7 +154,7 @@ window.addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefa
 function denyAccess(error) {
   accessGeneration+=1;
   ready=false;campaigns=[];editing=null;pendingArchive=null;dirty=false;
-  form.reset();updateCalculatedMetrics();renderList(null);setBusy(false);
+  form.reset();audienceEditor.load();updateCalculatedMetrics();renderList(null);setBusy(false);
   $('archive-dialog').close();
   document.querySelector('.editor-card').hidden=true;
   document.querySelector('.campaigns-card').hidden=true;
