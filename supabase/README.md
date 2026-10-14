@@ -11,17 +11,17 @@ Le projet [Supabase `jfsxvrfpaxacxbpemlgo`](https://supabase.com/dashboard/proje
 - Les inscriptions publiques et les connexions anonymes sont désactivées. La Site URL est `https://campagne-yes-ten.vercel.app`.
 - Les trois variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `PORTAL_CLIENT_ID` sont configurées dans l'environnement **Production** de Vercel.
 - Les lectures anonymes de `portal_campaigns` et de `portal_list_campaigns` sont refusées : HTTP `401`, code PostgreSQL `42501`.
-- Le compte client SIPAT est créé dans Auth. Son appartenance à `yes-baby` est enregistrée dans `portal_memberships` avec le rôle `viewer`, donnant accès en lecture aux campagnes actives.
-- Sa connexion en production, la redirection vers le dashboard et la lecture des 11 campagnes ont été vérifiées dans le navigateur. Les montants et compteurs affichés sont à zéro.
-- La page de gestion refuse l'accès à ce lecteur et masque le formulaire et le tableau. Les écritures via l'API n'ont pas été testées sur la production.
+- Le compte SIPAT est créé dans Auth. Le 14 octobre 2026, à la demande explicite de l'utilisateur et après sa confirmation, son rôle pour `yes-baby` dans `portal_memberships` est passé de `viewer` à `admin`. L'enregistrement a été confirmé dans Supabase. Ce rôle autorise l'ajout, la modification, la suppression restaurable et la restauration des campagnes.
+- La connexion avec les identifiants SIPAT existants et l'ouverture du back-office ont été vérifiées le 14 octobre 2026 : 11 campagnes chargées, formulaire d'ajout accessible et boutons « Modifier » et « Supprimer » activés. L'action « Modifier » de la campagne TopView ouvre le formulaire prérempli et le bouton « Enregistrer les modifications ».
+- Le back-office déployé au commit `66d8029` présente l'action « Supprimer » comme une suppression restaurable : la campagne est archivée, retirée du dashboard et peut être restaurée, avec son historique conservé.
 
-**Restent à réaliser :** créer le compte Auth administrateur Richmedia et lui attribuer le rôle `admin` dans `portal_memberships`, puis vérifier son parcours et les droits d'écriture. Le refus des écritures pour le compte SIPAT reste également à vérifier en production.
+**Restent à vérifier :** les opérations d'écriture en production. Aucune création, modification, suppression ou restauration de campagne n'a été exécutée pendant la vérification de l'accès administrateur.
 
-Le fichier source `portal-config.js` reste en mode local pour conserver le prototype utilisable jusqu'à la création des comptes. La production utilise la configuration générée par le build Vercel. L'import déjà réalisé ne synchronise pas SQLite et Supabase ; toute nouvelle modification locale reste locale.
+Le fichier source `portal-config.js` reste en mode local pour conserver le prototype utilisable. La production utilise la configuration générée par le build Vercel. L'import déjà réalisé ne synchronise pas SQLite et Supabase ; toute nouvelle modification locale reste locale.
 
 ## Installation d'un nouvel environnement
 
-Ces étapes décrivent une installation complète. Pour la production ci-dessus, poursuivre uniquement les étapes concernant les comptes, leurs rôles et la validation authentifiée ; ne pas réappliquer la migration ni réimporter les campagnes initiales.
+Ces étapes décrivent une installation complète. Pour la production ci-dessus, poursuivre uniquement la validation authentifiée ; ne pas réappliquer la migration ni réimporter les campagnes initiales.
 
 1. Créer le projet Supabase destiné au portail.
 2. Exécuter `migrations/202610040001_portal.sql` dans le SQL Editor avec le propriétaire de la base, ou avec le mécanisme de migrations Supabase. Ce script transactionnel s'exécute une fois.
