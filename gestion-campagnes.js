@@ -32,7 +32,7 @@ function setBusy(value) {
   $('form-fields').disabled=value||!ready;
   $('save-button').disabled=value||!ready;
   $('reset-form').disabled=value||!ready;
-  $('save-button').innerHTML=value?'Enregistrement…':`${editing?'Mettre à jour les chiffres':'Enregistrer la campagne'} <span aria-hidden="true">↗</span>`;
+  $('save-button').innerHTML=value?'Enregistrement…':`${editing?'Enregistrer les modifications':'Enregistrer la campagne'} <span aria-hidden="true">↗</span>`;
   document.querySelectorAll('[data-edit],[data-archive],[data-restore]').forEach(el=>el.disabled=value||!ready);
 }
 function updateCTR() {
@@ -54,8 +54,8 @@ function edit(record) {
   editing={...record};clearValidation();
   fields.forEach(name=>{form.elements.namedItem(name).value=record[name]??'';});
   dirty=false;
-  $('form-title').innerHTML='Actualiser les chiffres<span>.</span>';
-  $('form-intro').textContent='Les nouveaux totaux remplaceront ceux de cette campagne.';
+  $('form-title').innerHTML='Modifier la campagne<span>.</span>';
+  $('form-intro').textContent='Modifiez les informations et les résultats de cette campagne, puis enregistrez vos modifications.';
   notice('');updateCTR();setBusy(false);
   $('campaign-name').focus({preventScroll:true});
   document.querySelector('.editor-card').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
@@ -68,7 +68,7 @@ function renderList(updatedAt) {
   if(updatedAt!==undefined)$('last-saved').textContent=updatedAt?new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(updatedAt)):'Aucune saisie';
   $('list-count').textContent=visible.length;
   $('list-empty').hidden=visible.length>0;
-  $('campaign-list').innerHTML=visible.map(c=>`<tr class="${c.status==='archived'?'archived-row':''}"><td>${escape(c.name)}${c.status==='archived'?'<small>Archivée · hors dashboard</small>':''}</td><td><span class="channel-pill">${names[c.channel]}</span></td><td>${date(c.start)}<small>au ${date(c.end)}</small></td><td class="numeric">${number.format(c.budget)}</td><td class="numeric">${number.format(c.impressions)}</td><td class="numeric">${c.reach==null?'—':number.format(c.reach)}</td><td class="numeric">${c.reach>0?percent.format(c.impressions/c.reach):'—'}</td><td class="numeric">${number.format(c.clicks)}</td><td class="numeric">${ctr(c.clicks,c.impressions)}</td><td><div class="row-actions">${c.status==='active'?`<button class="row-action" data-edit="${c.id}" aria-label="Modifier ${escape(c.name)}">Modifier</button><button class="row-action archive" data-archive="${c.id}" aria-label="Archiver ${escape(c.name)}">Archiver</button>`:`<button class="row-action" data-restore="${c.id}" aria-label="Restaurer ${escape(c.name)}">Restaurer</button>`}</div></td></tr>`).join('');
+  $('campaign-list').innerHTML=visible.map(c=>`<tr class="${c.status==='archived'?'archived-row':''}"><td>${escape(c.name)}${c.status==='archived'?'<small>Supprimée · hors dashboard</small>':''}</td><td><span class="channel-pill">${names[c.channel]}</span></td><td>${date(c.start)}<small>au ${date(c.end)}</small></td><td class="numeric">${number.format(c.budget)}</td><td class="numeric">${number.format(c.impressions)}</td><td class="numeric">${c.reach==null?'—':number.format(c.reach)}</td><td class="numeric">${c.reach>0?percent.format(c.impressions/c.reach):'—'}</td><td class="numeric">${number.format(c.clicks)}</td><td class="numeric">${ctr(c.clicks,c.impressions)}</td><td><div class="row-actions">${c.status==='active'?`<button class="row-action" data-edit="${c.id}" aria-label="Modifier ${escape(c.name)}">Modifier</button><button class="row-action archive" data-archive="${c.id}" aria-label="Supprimer ${escape(c.name)}">Supprimer</button>`:`<button class="row-action" data-restore="${c.id}" aria-label="Restaurer ${escape(c.name)}">Restaurer</button>`}</div></td></tr>`).join('');
 }
 function acceptSaved(data,generation) {
   if(!canApply(generation))return false;
@@ -99,9 +99,9 @@ form.addEventListener('submit',async event=>{
     const data=await request(editing?`/api/campaigns/${editing.id}`:'/api/campaigns',editing?'PUT':'POST',payload);
     if(!acceptSaved(data,generation))return;
     editing={...data.campaign};dirty=false;
-    $('form-title').innerHTML='Actualiser les chiffres<span>.</span>';
-    $('form-intro').textContent='Les nouveaux totaux remplaceront ceux de cette campagne.';
-    notice(wasEditing?'Chiffres mis à jour. Le dashboard affiche les nouveaux totaux.':'Campagne enregistrée. Ses chiffres sont maintenant disponibles dans le dashboard.');
+    $('form-title').innerHTML='Modifier la campagne<span>.</span>';
+    $('form-intro').textContent='Modifiez les informations et les résultats de cette campagne, puis enregistrez vos modifications.';
+    notice(wasEditing?'Campagne modifiée. Le dashboard affiche les informations mises à jour.':'Campagne enregistrée. Ses chiffres sont maintenant disponibles dans le dashboard.');
   } catch(error) {
     if(!canApply(generation))return;
     if(error.status===401||error.status===403){denyAccess(error);return;}
@@ -136,7 +136,7 @@ $('confirm-archive').addEventListener('click',async()=>{
     const data=await request(`/api/campaigns/${pendingArchive.id}/archive`,'POST',{revision:pendingArchive.revision});
     if(!acceptSaved(data,generation))return;
     if(editing?.id===pendingArchive.id)resetForm();
-    $('archive-dialog').close();notice('Campagne archivée. Ses chiffres ont été retirés du dashboard.');pendingArchive=null;
+    $('archive-dialog').close();notice('Campagne supprimée du dashboard. Vous pouvez la restaurer en affichant les campagnes supprimées.');pendingArchive=null;
   } catch(error){if(!canApply(generation))return;if(error.status===401||error.status===403)denyAccess(error);else{$('archive-error').textContent=error.message;$('archive-error').hidden=false;}}
   finally{if(canApply(generation)){setBusy(false);$('confirm-archive').disabled=false;$('cancel-archive').disabled=false;}}
 });
