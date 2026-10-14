@@ -107,7 +107,7 @@ form.addEventListener('submit',async event=>{
   try {
     const data=await request(editing?`/api/campaigns/${editing.id}`:'/api/campaigns',editing?'PUT':'POST',payload);
     if(!acceptSaved(data,generation))return;
-    editing={...data.campaign};audienceEditor.load(data.campaign.audience);dirty=false;
+    editing={...data.campaign};audienceEditor.load(data.campaign.audience,{preserveView:true});dirty=false;
     $('form-title').innerHTML='Modifier la campagne<span>.</span>';
     $('form-intro').textContent='Modifiez les informations et les résultats de cette campagne, puis enregistrez vos modifications.';
     notice(wasEditing?'Campagne modifiée. Le dashboard affiche les informations mises à jour.':'Campagne enregistrée. Ses chiffres sont maintenant disponibles dans le dashboard.');
