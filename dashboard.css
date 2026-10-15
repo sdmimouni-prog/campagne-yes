@@ -72,3 +72,16 @@ main .kpi-bottom {
 @media(max-width:1100px){.audience-section .audience-grid{grid-template-columns:1fr 1fr}.audience-section .audience-cities{grid-column:1/-1}.audience-section .audience-city-list{grid-template-columns:1fr 1fr;column-gap:24px}}
 @media(max-width:760px){.audience-section .audience-controls{justify-content:flex-start}.audience-section .section-heading{gap:14px}.audience-section .audience-grid{grid-template-columns:1fr}.audience-section .audience-cities{grid-column:auto}.audience-section .audience-city-list{grid-template-columns:1fr}.audience-section .audience-controls select{font-size:11px}.audience-section .audience-view-switch button{font-size:11px}.audience-section .audience-table th,.audience-section .audience-table td{font-size:12px;padding:12px 10px}.audience-section .audience-footnote{font-size:10px}.audience-section .age-column-value{font-size:10px}}
 .total-row td{background:#fcfbfe;border-top:1px solid #e9e2ef;color:#51445f;font-weight:600}.total-row td.numeric{color:#51445f}
+
+/* Keep the campaign inventory readable at a glance. */
+.results-panel.campaign-list th{font-size:10px}
+.results-panel.campaign-list td{font-size:13px;padding-top:19px;padding-bottom:19px}
+.results-panel.campaign-list td.numeric{font-size:13px}
+.results-panel.campaign-list .platform-cell{font-size:12px}
+.results-panel.campaign-list .platform-sub{font-size:9px}
+.results-panel.campaign-list .status-pill{font-size:9px;padding:5px 7px}
+@media(max-width:760px){
+  .results-panel.campaign-list td,.results-panel.campaign-list td.numeric{font-size:11px;padding:15px 9px}
+  .results-panel.campaign-list .platform-cell{font-size:11px}
+  .results-panel.campaign-list .platform-sub{font-size:8px}
+}

@@ -117,6 +117,7 @@ function platformCell(platform,name,subtitle='') {
 }
 function renderTable() {
   const isCampaigns=state.view!=='overview';
+  $('results-table').closest('.results-panel').classList.toggle('campaign-list',state.view==='campaigns');
   const empty=inactive()||!summary.rows.length;
   $('empty-state').hidden=!empty;
   $('show-campaigns').hidden=isCampaigns;
