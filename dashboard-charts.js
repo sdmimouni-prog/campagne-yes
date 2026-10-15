@@ -116,7 +116,7 @@ function audienceContext(audience, dimension, rows) {
     source: details?.profile === 'declared' ? 'declared' : audience.source === 'manual' ? 'manual' : 'demo',
     partial: details?.partial ?? reportedTotal < total,
     reportedBasis: audience.total == null,
-    needsCampaign: Boolean(audience.reachRequiresSingleCampaign),
+    needsCampaign: false,
   };
 }
 const share = (value, context) => context.total > 0 ? `${PERCENT.format(ratio(value, context.total))} %` : '—';
@@ -129,8 +129,8 @@ function cardFooter(context) {
 }
 
 function emptyAudience(context, metric) {
-  const title = context.needsCampaign ? 'Sélectionnez une campagne' : metric === 'reach' && context.source === 'demo' ? 'Reach non disponible' : 'Aucune audience renseignée';
-  const description = context.needsCampaign ? 'Le Reach ne s’additionne pas entre campagnes. Choisissez une campagne dans le filtre pour consulter sa répartition.' : context.source === 'manual' ? 'Les répartitions saisies dans le back-office apparaîtront ici pour cette mesure et cette sélection.' : 'Aucune répartition disponible pour cette mesure et cette sélection.';
+  const title = metric === 'reach' && context.source === 'demo' ? 'Reach non disponible' : 'Aucune audience renseignée';
+  const description = context.source === 'manual' ? 'Les répartitions saisies dans le back-office apparaîtront ici pour cette mesure et cette sélection.' : 'Aucune répartition disponible pour cette mesure et cette sélection.';
   return `<div class="chart-empty"><span class="chart-empty-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>${escape(title)}</strong><p>${escape(description)}</p></div>`;
 }
 
@@ -177,7 +177,7 @@ export function renderAudience(container, audience = {}, { metric = 'impressions
   ];
   target.classList.add('audience-grid');
   target.innerHTML = cards.map(({ dimension, title, chart }) => {
-    const rows = audience.reachRequiresSingleCampaign ? [] : safeRows(audience[dimension]);
+    const rows = safeRows(audience[dimension]);
     if (dimension === 'cities') rows.sort((a, b) => b.value - a.value);
     const context = audienceContext(audience, dimension, rows);
     const content = !rows.length ? emptyAudience(context, metric) : view === 'tables' ? renderAudienceTable(rows, context, metric, title) : chart(rows, context, metric);

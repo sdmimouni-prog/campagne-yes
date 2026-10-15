@@ -68,9 +68,7 @@ function renderKpis() {
   $('kpi-impressions').textContent=number.format(t.impressions);
   $('kpi-clicks').textContent=number.format(t.clicks);
   $('kpi-reach').textContent=value(t.reach);
-  $('kpi-reach-note').textContent=manual()&&summary.rows.length>1
-    ? 'Sélectionnez une campagne pour son Reach'
-    : 'Personnes uniques touchées';
+  $('kpi-reach-note').textContent='Reach total renseigné';
   $('kpi-ctr').textContent=summary.rows.length?ctr(t.clicks,t.impressions):'—';
   $('kpi-views').textContent=value(t.views);
   // This miniature follows the same selected data as the full chart.
@@ -199,7 +197,7 @@ function exportReport() {
   else summary.byPlatform.forEach(p=>records.push(['Budget prévu','Octobre–Décembre 2026',p.name,'','','','','Budget trimestre',p.budget,'MAD HT','Plan média fourni']));
   const effectiveCampaign=CAMPAIGNS.find(c=>c.id===state.campaign);
   const audiencePlatform=summary.byPlatform.length===1?summary.byPlatform[0].name:'Tous les canaux';
-  if(summary.rows.length&&!audience.reachRequiresSingleCampaign)for(const [key,label]of [['gender','Sexe'],['ages','Âge'],['cities','Ville']]){
+  if(summary.rows.length)for(const [key,label]of [['gender','Sexe'],['ages','Âge'],['cities','Ville']]){
     const detail=audience.dimensions?.[key];
     const scope=manual()?`Saisie manuelle — ${detail?.partial?'données partielles — ':''}${detail?.availableCampaigns??0}/${detail?.campaignCount??0} campagnes renseignées — total renseigné : ${detail?.reportedTotal??0} — base des parts : ${detail?.total??audience.total??0}${audience.total==null?' (données renseignées, total Reach inconnu)':' (total sélectionné)'}`:'DÉMONSTRATION — fictif';
     audience[key].forEach(r=>records.push(['Audience',range.label,audiencePlatform,effectiveCampaign?.name||'Toutes les campagnes','',label,r.label,state.audience,r.value,state.audience==='reach'?'personnes':'nombre',scope]));
@@ -209,7 +207,7 @@ function exportReport() {
   if(exportUrl)URL.revokeObjectURL(exportUrl);
   exportUrl=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const filename=`Richmedia-YES-${manual()?'SAISIE':'DEMONSTRATION'}-${state.view}-${state.period}.csv`;
-  openDialog('Votre rapport est prêt.',`<p><strong>${esc(range.label)} · ${esc(audiencePlatform)}</strong></p><p>${manual()?`Le fichier reprend les totaux cumulés, les périodes, les budgets et les répartitions d’audience disponibles pour la mesure ${esc(metricNames[state.audience])}. La source précise les données partielles. Les cellules vides correspondent aux données non renseignées.${audience.reachRequiresSingleCampaign?' Sélectionnez une seule campagne pour exporter sa répartition du Reach.':''}`:'Le fichier reprend les résultats quotidiens, le budget prévu et les répartitions d’audience disponibles. Les résultats fictifs sont identifiés.'}</p><a class="download-link" href="${exportUrl}" download="${filename}">Télécharger le rapport CSV ${arrow}</a>`);
+  openDialog('Votre rapport est prêt.',`<p><strong>${esc(range.label)} · ${esc(audiencePlatform)}</strong></p><p>${manual()?`Le fichier reprend les totaux cumulés, les périodes, les budgets et les répartitions d’audience disponibles pour la mesure ${esc(metricNames[state.audience])}. La source précise les données partielles. Les cellules vides correspondent aux données non renseignées.`:'Le fichier reprend les résultats quotidiens, le budget prévu et les répartitions d’audience disponibles. Les résultats fictifs sont identifiés.'}</p><a class="download-link" href="${exportUrl}" download="${filename}">Télécharger le rapport CSV ${arrow}</a>`);
   $('announcement').textContent='Rapport CSV préparé pour les filtres sélectionnés.';
 }
 

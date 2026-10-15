@@ -194,8 +194,11 @@ function aggregateMetrics(rows) {
         ? roundMoney(rows.reduce((sum, row) => sum + Math.round(row.spend * 100), 0) / 100)
         : rows.reduce((sum, row) => sum + row[metric], 0);
   }
-  // Unique audiences cannot be added across campaigns without deduplication.
-  metrics.reach = rows.length === 1 ? rows[0].reach : null;
+  // The portal's global Reach is the sum of the Reach values reported by the
+  // selected campaigns; campaigns without a Reach value contribute nothing.
+  metrics.reach = rows.some(row => row.reach !== null)
+    ? rows.reduce((sum, row) => sum + (row.reach ?? 0), 0)
+    : null;
   metrics.frequency = metrics.reach > 0 ? metrics.impressions / metrics.reach : null;
   return metrics;
 }
@@ -291,13 +294,12 @@ export function getAudience(options = {}) {
   // The same summary selects campaigns and whole reporting periods for both views.
   const summary = getSummary(options);
   const campaignCount = summary.totals.activeCampaigns;
-  const reachRequiresSingleCampaign = metric === 'reach' && campaignCount > 1;
   const source = reportingState.mode;
   const total = metric === 'reach' ? summary.totals.reach ?? null : summary.totals[metric];
   const hasReportedAudience = summary.rows.some(campaign => AUDIENCE_DIMENSIONS.some(dimension =>
     campaign.audience?.[dimension]?.some(row => row[metric] !== null)
   ));
-  const audience = { total, cities: [], gender: [], ages: [], source, dimensions: {}, reachRequiresSingleCampaign };
+  const audience = { total, cities: [], gender: [], ages: [], source, dimensions: {} };
   if (source === 'demo' && metric !== 'reach') {
     const demo = demonstration.getAudience({ ...options, metric });
     for (const dimension of AUDIENCE_DIMENSIONS) {
@@ -310,7 +312,7 @@ export function getAudience(options = {}) {
     }
     return audience;
   }
-  if (reachRequiresSingleCampaign || source === 'demo') {
+  if (source === 'demo') {
     for (const dimension of AUDIENCE_DIMENSIONS) {
       audience.dimensions[dimension] = {
         total: null, reportedTotal: 0, coverage: null, partial: campaignCount > 0,
