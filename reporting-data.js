@@ -277,6 +277,11 @@ export function getSummary({ period, platform = 'all', campaign = 'all' } = {}) 
     const platformRows = rows.filter(row => row.platform === item.id);
     return { ...item, ...aggregateMetrics(platformRows), budget: sumMoney(platformRows), campaignCount: platformRows.length };
   });
+  // Cross-platform Reach is not additive. Use the largest platform-level
+  // Reach as the global figure, then derive the combined frequency from it.
+  const platformReach = byPlatform.map(item => item.reach).filter(reach => reach !== null);
+  totals.reach = platformReach.length ? Math.max(...platformReach) : null;
+  totals.frequency = totals.reach > 0 ? totals.impressions / totals.reach : null;
   const timelineUnavailable = rows.some(row => row.start !== row.end);
   const dailyRows = new Map();
   if (!timelineUnavailable) {
