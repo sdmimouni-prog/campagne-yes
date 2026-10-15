@@ -103,7 +103,7 @@ function renderCharts() {
   const declaredProfile=Object.values(audience.dimensions||{}).some(dimension=>dimension?.profile==='declared');
   document.querySelector('.audience-footnote').textContent=manual()
     ? declaredProfile
-      ? 'Profil d’audience déclaré par YES : les pourcentages sont appliqués aux impressions et clics cumulés. Les répartitions saisies campagne par campagne dans le back-office remplaceront ce profil.'
+      ? ''
       : 'Répartitions renseignées par sexe, âge et ville.'
     : 'Profil d’audience de démonstration.';
 }
