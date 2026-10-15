@@ -68,7 +68,6 @@ function renderKpis() {
   $('kpi-impressions').textContent=number.format(t.impressions);
   $('kpi-clicks').textContent=number.format(t.clicks);
   $('kpi-reach').textContent=value(t.reach);
-  $('kpi-reach-note').textContent='Reach total renseigné';
   $('kpi-ctr').textContent=summary.rows.length?ctr(t.clicks,t.impressions):'—';
   $('kpi-views').textContent=value(t.views);
   // This miniature follows the same selected data as the full chart.
@@ -105,8 +104,8 @@ function renderCharts() {
   document.querySelector('.audience-footnote').textContent=manual()
     ? declaredProfile
       ? 'Profil d’audience déclaré par YES : les pourcentages sont appliqués aux impressions et clics cumulés. Les répartitions saisies campagne par campagne dans le back-office remplaceront ce profil.'
-      : 'Répartitions renseignées pour les filtres sélectionnés. Chaque dimension est indépendante : ne pas additionner sexe, âge et ville. Les parts utilisent le total de la mesure, ou les données renseignées si le total Reach est inconnu. Le Reach se consulte campagne par campagne pour éviter les doublons.'
-    : 'Répartitions de démonstration pour les impressions et les clics. Le Reach unique n’est pas disponible dans ce jeu simulé. Chaque dimension est indépendante.';
+      : 'Répartitions renseignées par sexe, âge et ville.'
+    : 'Profil d’audience de démonstration.';
 }
 function platformCell(platform,name,subtitle='') {
   return `<div class="platform-cell"><span class="platform-badge ${platform}">${icons[platform]||'·'}</span><span>${esc(name)}${subtitle?`<small class="platform-sub">${esc(subtitle)}</small>`:''}</span></div>`;
@@ -221,7 +220,7 @@ $('results-body').addEventListener('click',e=>{const button=e.target.closest('[d
 $('show-campaigns').addEventListener('click',()=>{location.hash='campaigns';});
 $('back-overview').addEventListener('click',()=>{location.hash='overview';});
 $('export-report').addEventListener('click',exportReport);
-const about=()=>openDialog('Vos données de campagne.',manual()?`<p>Les résultats affichés proviennent des <strong>saisies de l’équipe Richmedia</strong>.</p><ul><li>Chaque campagne contient un total cumulé sur la période indiquée. Une mise à jour remplace le total précédent.</li><li>Un filtre mensuel retient seulement les campagnes dont toute la période de saisie est comprise dans ce mois.</li><li>Les champs inconnus apparaissent avec « — ». Un total incomplet reste non renseigné.</li><li>Le budget est distinct des dépenses réellement saisies.</li><li>Les répartitions par sexe, âge et ville proviennent des détails d’audience renseignés. Une dimension incomplète est signalée.</li><li>Le Reach unique est consultable pour une seule campagne à la fois.</li><li>Les courbes quotidiennes nécessitent des résultats jour par jour.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`:`<p>Cet espace présente le suivi de campagne <strong>Richmedia pour YES Baby Comfort</strong>.</p><ul><li>Les résultats et profils actuels sont simulés.</li><li>Les budgets média de Meta 40 000 MAD, YouTube 53 000 MAD et TikTok 45 000 MAD HT proviennent du plan fourni.</li><li>La première campagne enregistrée par l’équipe remplacera ce jeu de démonstration.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`);
+const about=()=>openDialog('Vos données de campagne.',manual()?`<p>Les résultats affichés proviennent des <strong>saisies de l’équipe Richmedia</strong>.</p><ul><li>Chaque campagne contient un total cumulé sur la période indiquée. Une mise à jour remplace le total précédent.</li><li>Un filtre mensuel retient seulement les campagnes dont toute la période de saisie est comprise dans ce mois.</li><li>Les champs inconnus apparaissent avec « — ». Un total incomplet reste non renseigné.</li><li>Le budget est distinct des dépenses réellement saisies.</li><li>Les répartitions par sexe, âge et ville proviennent des détails d’audience renseignés.</li><li>Les courbes quotidiennes nécessitent des résultats jour par jour.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`:`<p>Cet espace présente le suivi de campagne <strong>Richmedia pour YES Baby Comfort</strong>.</p><ul><li>Les résultats et profils actuels sont simulés.</li><li>Les budgets média de Meta 40 000 MAD, YouTube 53 000 MAD et TikTok 45 000 MAD HT proviennent du plan fourni.</li><li>La première campagne enregistrée par l’équipe remplacera ce jeu de démonstration.</li></ul><p>Les connexions aux plateformes publicitaires ne sont pas encore actives.</p>`);
 $('help-button').addEventListener('click',about);
 $('contact-agency').addEventListener('click',()=>openDialog('Votre équipe Richmedia.',`<p>Pour échanger sur votre campagne ou votre accès, contactez votre interlocuteur Richmedia.</p><p><a href="mailto:contact@richmedia.ma">contact@richmedia.ma</a></p><p>Ce lien ouvre votre messagerie. Aucun message n’est envoyé automatiquement.</p>`));
 $('view-creative').addEventListener('click',()=>openDialog('L’univers de campagne YES.',`<p>Visuel extrait du plan média fourni. Sa présence dans cette bibliothèque ne signifie pas qu’il a été diffusé.</p><img src="assets/yes-campaign.png" alt="Page de présentation de la campagne YES Baby Comfort">`));

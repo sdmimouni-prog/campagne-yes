@@ -129,7 +129,7 @@ function cardFooter(context) {
 }
 
 function emptyAudience(context, metric) {
-  const title = metric === 'reach' && context.source === 'demo' ? 'Reach non disponible' : 'Aucune audience renseignée';
+  const title = 'Aucune audience renseignée';
   const description = context.source === 'manual' ? 'Les répartitions saisies dans le back-office apparaîtront ici pour cette mesure et cette sélection.' : 'Aucune répartition disponible pour cette mesure et cette sélection.';
   return `<div class="chart-empty"><span class="chart-empty-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>${escape(title)}</strong><p>${escape(description)}</p></div>`;
 }
