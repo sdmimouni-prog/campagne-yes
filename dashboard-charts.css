@@ -78,3 +78,25 @@
 @media(max-width:540px){.audience-grid{grid-template-columns:1fr;gap:14px}.audience-ages{grid-column:auto}.audience-card{padding:20px 20px 0}.audience-card-heading{margin-bottom:22px}.audience-card-footer{margin-left:-20px;margin-right:-20px;padding:13px 20px}.audience-city-list{gap:19px}.city-row-label strong{font-size:11px}.city-row-label em{font-size:10px;min-width:49px}.audience-gender-legend{max-width:280px;width:100%;align-self:center;gap:14px}.audience-gender-legend small{display:block}.audience-donut{width:184px;height:184px}.audience-age-chart{height:190px}.trend-label{font-size:13px}.trend-footnote{font-size:9px}.trend-tooltip{min-width:90px;padding:8px 10px}.trend-tooltip strong{font-size:12px}.trend-tooltip span{font-size:9px}}
 @media print{.trend-tooltip,.age-column-tooltip{display:none!important}.audience-grid{grid-template-columns:1.2fr .88fr 1.15fr;gap:10px}.audience-card{break-inside:avoid}.audience-ages{grid-column:auto}.audience-card-heading h3{font-size:11px}.audience-card-heading p,.audience-card-footer{font-size:8px}}
 .age-column-label{white-space:normal;text-align:center;line-height:1.2}
+
+/* Audience charts animate once when their data is rendered. */
+.audience-donut{animation:audience-donut-enter .55s cubic-bezier(.2,.8,.25,1) both}
+.audience-donut-segment{transform-box:fill-box;transform-origin:center;animation:audience-segment-enter .48s cubic-bezier(.2,.85,.3,1) both;animation-delay:calc(var(--segment-index, 0) * 80ms)}
+.audience-donut-segment:nth-of-type(2){--segment-index:1}.audience-donut-segment:nth-of-type(3){--segment-index:2}.audience-donut-value,.audience-donut-label{animation:audience-copy-enter .42s ease-out .2s both}
+.audience-gender-legend li{border-radius:6px;padding:4px 6px;margin:0 -6px;cursor:default;outline:none;transition:background .18s ease,color .18s ease,transform .18s ease}
+.audience-gender-legend li:hover,.audience-gender-legend li:focus{background:#f8f4ff;transform:translateX(3px)}
+.audience-gender[data-gender-highlight] .audience-donut-segment{opacity:.2;transition:opacity .18s ease,transform .18s ease}
+.audience-gender[data-gender-highlight="0"] [data-gender-index="0"],.audience-gender[data-gender-highlight="1"] [data-gender-index="1"],.audience-gender[data-gender-highlight="2"] [data-gender-index="2"]{opacity:1;transform:scale(1.08)}
+.audience-gender[data-gender-highlight="0"] .audience-gender-legend [data-gender-index="0"],.audience-gender[data-gender-highlight="1"] .audience-gender-legend [data-gender-index="1"],.audience-gender[data-gender-highlight="2"] .audience-gender-legend [data-gender-index="2"]{background:#f3ebff;color:#5f28c5}
+.age-column-bar{transform-origin:bottom;animation:audience-bar-enter .56s cubic-bezier(.2,.82,.28,1) both;animation-delay:calc(var(--item-index) * 85ms);transition:background .15s,filter .18s,transform .18s}
+.age-column:hover .age-column-bar,.age-column:focus .age-column-bar{transform:scaleX(1.12) scaleY(1.035);filter:drop-shadow(0 5px 7px #7635ef2b)}
+.audience-city-row{outline:none;border-radius:7px;padding:3px 5px;margin:0 -5px;cursor:default;transition:background .18s ease,transform .18s ease}
+.audience-city-row:hover,.audience-city-row:focus{background:#faf7ff;transform:translateX(3px)}
+.audience-city-track>span{transform-origin:left;animation:audience-city-enter .6s cubic-bezier(.2,.82,.28,1) both;animation-delay:calc(var(--item-index) * 65ms);transition:filter .18s ease,opacity .18s ease}
+.audience-city-row:hover .audience-city-track>span,.audience-city-row:focus .audience-city-track>span{filter:brightness(1.1) drop-shadow(0 2px 3px #7635ef59);opacity:1!important}
+@keyframes audience-donut-enter{from{opacity:0;transform:scale(.88) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes audience-segment-enter{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+@keyframes audience-copy-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes audience-bar-enter{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes audience-city-enter{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.audience-donut,.audience-donut-segment,.audience-donut-value,.audience-donut-label,.age-column-bar,.audience-city-track>span{animation:none!important}.audience-gender-legend li,.audience-city-row,.age-column-bar{transition:none!important}}

@@ -139,7 +139,7 @@ function renderAudienceTable(rows, context, metric, title) {
 
 function renderCities(rows, context, metric) {
   const max = Math.max(0, ...rows.map(row => row.value));
-  return `<ol class="audience-city-list">${rows.map((row, index) => `<li><div class="city-row-label"><span><small>${String(index + 1).padStart(2, '0')}</small>${escape(row.label)}</span><strong title="${escape(NUMBER.format(row.value))}">${escape(COMPACT.format(row.value))}<em>${escape(share(row.value, context))}</em></strong></div><div class="audience-city-track" role="img" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`)}"><span style="width:${ratio(row.value, max).toFixed(3)}%;opacity:${Math.max(0.4, 1 - index * 0.12)}"></span></div></li>`).join('')}</ol>`;
+  return `<ol class="audience-city-list">${rows.map((row, index) => `<li class="audience-city-row" tabindex="0" style="--item-index:${index}" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`)}"><div class="city-row-label"><span><small>${String(index + 1).padStart(2, '0')}</small>${escape(row.label)}</span><strong title="${escape(NUMBER.format(row.value))}">${escape(COMPACT.format(row.value))}<em>${escape(share(row.value, context))}</em></strong></div><div class="audience-city-track"><span style="width:${ratio(row.value, max).toFixed(3)}%;opacity:${Math.max(0.4, 1 - index * 0.12)}"></span></div></li>`).join('')}</ol>`;
 }
 
 function renderGender(rows, context, metric) {
@@ -147,20 +147,20 @@ function renderGender(rows, context, metric) {
   let offset = 0;
   const segments = rows.map((row, index) => {
     const fraction = ratio(row.value, context.total) / 100;
-    const segment = `<circle cx="90" cy="90" r="${radius}" fill="none" stroke="${COLORS[index % COLORS.length]}" stroke-width="22" stroke-dasharray="${Math.max(0, fraction * circumference - (fraction > .01 ? 2 : 0))} ${circumference}" stroke-dashoffset="${-offset * circumference}" transform="rotate(-90 90 90)"/>`;
+    const segment = `<circle class="audience-donut-segment" data-gender-index="${index}" tabindex="0" cx="90" cy="90" r="${radius}" fill="none" stroke="${COLORS[index % COLORS.length]}" stroke-width="22" stroke-dasharray="${Math.max(0, fraction * circumference - (fraction > .01 ? 2 : 0))} ${circumference}" stroke-dashoffset="${-offset * circumference}" transform="rotate(-90 90 90)"/>`;
     offset += fraction;
     return segment;
   }).join('');
   const main = context.reportedTotal > 0 ? rows.reduce((best, row) => row.value > best.value ? row : best, rows[0]) : null;
   const description = rows.map(row => `${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`).join('. ');
-  return `<div class="audience-donut-wrap"><svg class="audience-donut" viewBox="0 0 180 180" role="img" aria-label="${escape(description)}"><circle cx="90" cy="90" r="${radius}" fill="none" stroke="#f2eff6" stroke-width="22"/>${segments}<text x="90" y="90" text-anchor="middle" class="audience-donut-value">${escape(main ? share(main.value, context) : '0')}</text><text x="90" y="110" text-anchor="middle" class="audience-donut-label">${escape(main ? main.label : metricInfo(metric).unit)}</text></svg></div><ul class="audience-gender-legend">${rows.map((row, index) => `<li><span><i style="background:${COLORS[index % COLORS.length]}" aria-hidden="true"></i>${escape(row.label)}</span><span><small title="${escape(NUMBER.format(row.value))}">${escape(COMPACT.format(row.value))}</small><strong>${escape(share(row.value, context))}</strong></span></li>`).join('')}</ul>`;
+  return `<div class="audience-donut-wrap"><svg class="audience-donut" viewBox="0 0 180 180" role="img" aria-label="${escape(description)}"><circle cx="90" cy="90" r="${radius}" fill="none" stroke="#f2eff6" stroke-width="22"/>${segments}<text x="90" y="90" text-anchor="middle" class="audience-donut-value">${escape(main ? share(main.value, context) : '0')}</text><text x="90" y="110" text-anchor="middle" class="audience-donut-label">${escape(main ? main.label : metricInfo(metric).unit)}</text></svg></div><ul class="audience-gender-legend">${rows.map((row, index) => `<li data-gender-index="${index}" tabindex="0"><span><i style="background:${COLORS[index % COLORS.length]}" aria-hidden="true"></i>${escape(row.label)}</span><span><small title="${escape(NUMBER.format(row.value))}">${escape(COMPACT.format(row.value))}</small><strong>${escape(share(row.value, context))}</strong></span></li>`).join('')}</ul>`;
 }
 
 function renderAges(rows, context, metric) {
   const maximum = Math.max(0, ...rows.map(row => row.value));
   const winningIndex = maximum > 0 ? rows.findIndex(row => row.value === maximum) : -1;
   const winners = rows.filter(row => maximum > 0 && row.value === maximum);
-  const chart = `<div class="audience-age-chart" role="group" aria-label="Répartition par tranche d’âge"><div class="age-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="age-columns">${rows.map((row, index) => `<div class="age-column ${index === winningIndex ? 'age-column-leading' : ''}" tabindex="0" role="img" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`)}"><div class="age-column-bar-space"><div class="age-column-bar" style="height:${(maximum > 0 ? row.value / maximum * 83 : 0).toFixed(3)}%"><span class="age-column-value">${escape(share(row.value, context))}</span></div></div><span class="age-column-label">${escape(row.label)}</span><span class="age-column-tooltip">${escape(format(row.value, metric))}</span></div>`).join('')}</div></div>`;
+  const chart = `<div class="audience-age-chart" role="group" aria-label="Répartition par tranche d’âge"><div class="age-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="age-columns">${rows.map((row, index) => `<div class="age-column ${index === winningIndex ? 'age-column-leading' : ''}" style="--item-index:${index}" tabindex="0" role="img" aria-label="${escape(`${row.label} : ${format(row.value, metric)}, ${share(row.value, context)}`)}"><div class="age-column-bar-space"><div class="age-column-bar" style="height:${(maximum > 0 ? row.value / maximum * 83 : 0).toFixed(3)}%"><span class="age-column-value">${escape(share(row.value, context))}</span></div></div><span class="age-column-label">${escape(row.label)}</span><span class="age-column-tooltip">${escape(format(row.value, metric))}</span></div>`).join('')}</div></div>`;
   const insight = winners.length === 1 ? `<div class="audience-age-insight"><span class="age-insight-icon" aria-hidden="true">↗</span><p><strong>${escape(winners[0].label)}</strong><span>En tête des données renseignées</span></p><b>${escape(share(maximum, context))}</b></div>` : '';
   return chart + insight;
 }
@@ -182,4 +182,16 @@ export function renderAudience(container, audience = {}, { metric = 'impressions
     const content = !rows.length ? emptyAudience(context, metric) : view === 'tables' ? renderAudienceTable(rows, context, metric, title) : chart(rows, context, metric);
     return `<article class="audience-card audience-${dimension}">${cardHeader(title, dimension, metric)}${content}${rows.length ? cardFooter(context) : ''}</article>`;
   }).join('');
+  if (typeof target.querySelectorAll !== 'function') return;
+  target.querySelectorAll('.audience-gender').forEach(card => {
+    const setHighlight = index => { card.dataset.genderHighlight = index; };
+    const clearHighlight = () => { delete card.dataset.genderHighlight; };
+    card.querySelectorAll('[data-gender-index]').forEach(item => {
+      item.addEventListener('pointerenter', () => setHighlight(item.dataset.genderIndex));
+      item.addEventListener('pointerleave', clearHighlight);
+      item.addEventListener('focus', () => setHighlight(item.dataset.genderIndex));
+      item.addEventListener('blur', clearHighlight);
+      item.addEventListener('keydown', event => { if (event.key === 'Escape') clearHighlight(); });
+    });
+  });
 }
