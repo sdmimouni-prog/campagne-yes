@@ -114,7 +114,6 @@ function renderTable() {
   const isCampaigns=state.view!=='overview';
   const empty=inactive()||!summary.rows.length;
   $('empty-state').hidden=!empty;
-  $('table-note').hidden=empty;
   $('show-campaigns').hidden=isCampaigns;
   $('results-title').textContent=state.view==='influence'?'Liste des influenceurs':state.view==='campaigns'?'Toutes les campagnes':channelNames[state.view]?`Campagnes ${channelNames[state.view]}`:'Performances par plateforme';
   $('results-description').textContent=empty?'Aucun résultat sur la sélection actuelle.':manual()?'Résultats cumulés sur les périodes renseignées. « — » : donnée non renseignée.':'Le détail de vos résultats sur la période sélectionnée.';
