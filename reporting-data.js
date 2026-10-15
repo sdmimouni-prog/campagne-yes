@@ -27,7 +27,7 @@ const CAMPAIGN_LAUNCH_DATE = '2026-10-09';
 const DECLARED_AUDIENCE_PROFILE = Object.freeze({
   gender: Object.freeze([['Femmes', 82], ['Hommes', 18]]),
   ages: Object.freeze([['18–24', 17], ['25–34', 38], ['34–44', 32], ['45–65', 13]]),
-  cities: Object.freeze([['Casa', 18], ['Rabat', 12], ['Agadir', 12], ['Marrakech', 10], ['Tanger', 10], ['Fès–Meknès', 10], ['Oriental', 8], ['Laâyoune', 4], ['Autres', 16]]),
+  cities: Object.freeze([['Casa', 18], ['Rabat', 13.2], ['Agadir', 10.8], ['Marrakech', 9.8], ['Tanger', 9.7], ['Fès–Meknès', 10.3], ['Oriental', 8], ['Laâyoune', 4], ['Autres', 16.2]]),
 });
 let reportingState = { mode: 'loading', updatedAt: null };
 let reportingGeneration = 0;
