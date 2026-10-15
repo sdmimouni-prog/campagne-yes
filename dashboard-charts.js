@@ -121,13 +121,6 @@ function audienceContext(audience, dimension, rows) {
 }
 const share = (value, context) => context.total > 0 ? `${PERCENT.format(ratio(value, context.total))} %` : '—';
 
-function cardFooter(context) {
-  const source = context.source === 'declared' ? 'Profil déclaré' : context.source === 'manual' ? 'Saisie manuelle' : 'Démonstration';
-  const coverage = context.reportedBasis ? '% des données renseignées' : context.total > 0 ? `Détail sur ${share(context.reportedTotal, context)} du total` : 'Valeurs renseignées à zéro';
-  const campaigns = context.source !== 'declared' && context.campaignCount > 1 ? ` · ${context.availableCampaigns}/${context.campaignCount} campagnes renseignées` : '';
-  return `<div class="audience-card-footer${context.partial ? ' audience-partial' : ''}"><span class="audience-footer-dot" aria-hidden="true"></span><span>${escape(`${source} · ${context.partial ? 'Données partielles · ' : ''}${coverage}${campaigns}`)}</span></div>`;
-}
-
 function emptyAudience(context, metric) {
   const title = 'Aucune audience renseignée';
   const description = context.source === 'manual' ? 'Les répartitions saisies dans le back-office apparaîtront ici pour cette mesure et cette sélection.' : 'Aucune répartition disponible pour cette mesure et cette sélection.';
@@ -181,7 +174,7 @@ export function renderAudience(container, audience = {}, { metric = 'impressions
     if (dimension === 'cities') rows.sort((a, b) => b.value - a.value);
     const context = audienceContext(audience, dimension, rows);
     const content = !rows.length ? emptyAudience(context, metric) : view === 'tables' ? renderAudienceTable(rows, context, metric, title) : chart(rows, context, metric);
-    return `<article class="audience-card audience-${dimension}">${cardHeader(title, dimension, metric)}${content}${rows.length ? cardFooter(context) : ''}</article>`;
+    return `<article class="audience-card audience-${dimension}">${cardHeader(title, dimension, metric)}${content}</article>`;
   }).join('');
   if (typeof target.querySelectorAll !== 'function') return;
   target.querySelectorAll('.audience-gender').forEach(card => {
