@@ -89,6 +89,7 @@ test('manual totals generate a clearly marked estimated timeline from the campai
   assert.equal(estimated.timeline.at(-1).date, '2026-10-31');
   assert.equal(estimated.timeline.reduce((sum, day) => sum + day.impressions, 0), 1000);
   assert.equal(estimated.timeline.reduce((sum, day) => sum + day.clicks, 0), 10);
+  assert.notEqual(estimated.timeline[0].impressions, estimated.timeline[1].impressions);
   const audience = reporting.getAudience({ metric: 'clicks' });
   assert.equal(audience.total, 10);
   assert.equal(audience.source, 'manual');

@@ -210,8 +210,10 @@ function distributeTotal(total, count, decimal = false) {
   if (total === null || count === 0) return Array(count).fill(null);
   const scale = decimal ? 100 : 1;
   const units = Math.round(total * scale);
-  // Slightly increases the weighting each day while preserving the exact total.
-  const weights = Array.from({ length: count }, (_, index) => index + 2);
+  // A daily pattern keeps the visualisation readable without turning a period
+  // total into an artificial cumulative curve. The exact total is preserved.
+  const dailyPattern = [.82, 1.06, .94, 1.17, 1.02, .88, 1.11];
+  const weights = Array.from({ length: count }, (_, index) => dailyPattern[index % dailyPattern.length]);
   const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
   const values = weights.map(weight => Math.floor(units * weight / weightTotal));
   let remaining = units - values.reduce((sum, value) => sum + value, 0);

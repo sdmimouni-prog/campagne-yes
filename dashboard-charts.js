@@ -59,7 +59,8 @@ export function renderTrend(container, timeline, metric = 'impressions') {
     const value = maximum / 4 * index, y = baseline - plotHeight / 4 * index;
     return `<g><line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" class="trend-grid"/><text x="${left - 13}" y="${y + 3.5}" text-anchor="end" class="trend-label">${escape(COMPACT.format(value))}</text></g>`;
   }).join('');
-  const labelCount = Math.min(width < 440 ? 4 : 6, data.length);
+  // A short estimated timeline must remain readable as a day-by-day view.
+  const labelCount = data.length <= 7 ? data.length : Math.min(width < 440 ? 4 : 6, data.length);
   const labelIndexes = [...new Set(Array.from({ length: labelCount }, (_, index) => Math.round(index * (data.length - 1) / Math.max(1, labelCount - 1))))];
   const labels = labelIndexes.map((index) => `<text x="${points[index].x}" y="${height - 13}" text-anchor="${index === 0 && data.length > 1 ? 'start' : index === data.length - 1 && data.length > 1 ? 'end' : 'middle'}" class="trend-label">${escape(dateLabel(data[index].date))}</text>`).join('');
   const summary = `${info.label} du ${dateLabel(data[0].date, true)} au ${dateLabel(data.at(-1).date, true)} : ${format(total, metric)}${metric === 'spend' ? '' : ` ${info.unit}`}.`;
