@@ -194,10 +194,10 @@ function aggregateMetrics(rows) {
         ? roundMoney(rows.reduce((sum, row) => sum + Math.round(row.spend * 100), 0) / 100)
         : rows.reduce((sum, row) => sum + row[metric], 0);
   }
-  // The global Reach is the arithmetic mean of reported campaign values.
+  // The global Reach is the sum of reported Reach values for the selection.
   const reportedReach = rows.filter(row => row.reach !== null).map(row => row.reach);
   metrics.reach = reportedReach.length
-    ? reportedReach.reduce((sum, value) => sum + value, 0) / reportedReach.length
+    ? reportedReach.reduce((sum, value) => sum + value, 0)
     : null;
   metrics.frequency = metrics.reach > 0 ? metrics.impressions / metrics.reach : null;
   return metrics;
