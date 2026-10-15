@@ -253,7 +253,7 @@ async function refreshData() {
       if(!isCurrent()||error.code==='STALE_REPORTING_LOAD')return;
       if(error.status===401||error.status===403)clearProtectedData();
       $('data-status').hidden=false;$('retry-data').hidden=false;
-      $('data-status-text').textContent=error.status===403?'Votre compte n’a pas accès à cet espace client. Contactez Richmedia.':error.status===401?'Votre session a expiré. Reconnectez-vous pour continuer.':initialized?'Actualisation impossible. Les derniers chiffres chargés restent affichés.':getPortalMode()==='supabase'?'Impossible de charger les campagnes. Vérifiez votre connexion et la configuration Supabase.':'Impossible de charger les campagnes. Vérifiez que le serveur de gestion est démarré.';
+      $('data-status-text').textContent=error.status===403?'Votre compte n’a pas accès à cet espace client. Contactez Richmedia.':error.status===401?'Votre session a expiré. Reconnectez-vous pour continuer.':error.message||'Actualisation impossible. Réessayez dans un instant.';
       $('data-status').classList.add('error');
     } finally {if(loading===task)loading=null;}
   })();
