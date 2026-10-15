@@ -57,6 +57,10 @@ function renderFilters() {
   $('platform-filter').innerHTML=choices.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   $('platform-filter').value=selectedPlatform;
   $('platform-filter').disabled=Boolean(channelNames[state.view]);
+  $('platform-filter-wrap').hidden=state.view==='campaigns';
+  $('campaign-channel-filter-wrap').hidden=state.view!=='campaigns';
+  $('campaign-channel-filter').innerHTML='<option value="all">Tous les canaux</option>'+PLATFORMS.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  $('campaign-channel-filter').value=state.platform;
   const campaigns=CAMPAIGNS.filter(c=>state.platform==='all'||c.platform===state.platform);
   $('campaign-filter').innerHTML='<option value="all">Toutes les campagnes</option>'+campaigns.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
   $('campaign-filter').value=state.campaign;
@@ -215,6 +219,7 @@ function exportReport() {
 
 $('period-filter').addEventListener('change',e=>{state.period=e.target.value;render();});
 $('platform-filter').addEventListener('change',e=>{state.platform=e.target.value;state.campaign='all';render();});
+$('campaign-channel-filter').addEventListener('change',e=>{state.platform=e.target.value;state.campaign='all';render();});
 $('campaign-filter').addEventListener('change',e=>{state.campaign=e.target.value;render();});
 $('audience-metric').addEventListener('change',e=>{state.audience=e.target.value;render();});
 document.querySelectorAll('[data-audience-view]').forEach(button=>button.addEventListener('click',()=>{state.audienceView=button.dataset.audienceView;renderCharts();}));
