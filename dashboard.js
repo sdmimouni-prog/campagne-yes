@@ -100,8 +100,11 @@ function renderCharts() {
     button.classList.toggle('selected',selected);
     button.setAttribute('aria-pressed',String(selected));
   });
+  const declaredProfile=Object.values(audience.dimensions||{}).some(dimension=>dimension?.profile==='declared');
   document.querySelector('.audience-footnote').textContent=manual()
-    ? 'Répartitions renseignées pour les filtres sélectionnés. Chaque dimension est indépendante : ne pas additionner sexe, âge et ville. Les parts utilisent le total de la mesure, ou les données renseignées si le total Reach est inconnu. Le Reach se consulte campagne par campagne pour éviter les doublons.'
+    ? declaredProfile
+      ? 'Profil d’audience déclaré par YES : les pourcentages sont appliqués aux impressions et clics cumulés. Les répartitions saisies campagne par campagne dans le back-office remplaceront ce profil.'
+      : 'Répartitions renseignées pour les filtres sélectionnés. Chaque dimension est indépendante : ne pas additionner sexe, âge et ville. Les parts utilisent le total de la mesure, ou les données renseignées si le total Reach est inconnu. Le Reach se consulte campagne par campagne pour éviter les doublons.'
     : 'Répartitions de démonstration pour les impressions et les clics. Le Reach unique n’est pas disponible dans ce jeu simulé. Chaque dimension est indépendante.';
 }
 function platformCell(platform,name,subtitle='') {

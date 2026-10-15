@@ -92,11 +92,12 @@ test('manual totals generate a clearly marked estimated timeline from the campai
   const audience = reporting.getAudience({ metric: 'clicks' });
   assert.equal(audience.total, 10);
   assert.equal(audience.source, 'manual');
+  assert.deepEqual(audience.gender, [{ label: 'Femmes', value: 8 }, { label: 'Hommes', value: 2 }]);
+  assert.deepEqual(audience.ages, [{ label: '18–24', value: 2 }, { label: '25–34', value: 4 }, { label: '34–44', value: 3 }, { label: '45–65', value: 1 }]);
+  assert.equal(audience.cities.reduce((sum, row) => sum + row.value, 0), 10);
   for (const dimension of ['cities', 'gender', 'ages']) {
-    assert.deepEqual(audience[dimension], []);
-    assert.equal(audience.dimensions[dimension].reportedTotal, 0);
-    assert.equal(audience.dimensions[dimension].availableCampaigns, 0);
-    assert.equal(audience.dimensions[dimension].partial, true);
+    assert.equal(audience.dimensions[dimension].profile, 'declared');
+    assert.equal(audience.dimensions[dimension].partial, false);
   }
   install([
     record('later', { start: '2026-10-04', end: '2026-10-04', impressions: 300 }),
@@ -293,7 +294,7 @@ test('audience preserves explicit zeros, omits unknown rows and never fills abse
   assert.deepEqual(reporting.getAudience({ metric: 'reach' }).gender, [{ label: 'Femmes', value: 0 }]);
   install([record('old'), record('null', { audience: null })]);
   for (const campaign of reporting.CAMPAIGNS) assert.deepEqual(campaign.audience, { gender: [], ages: [], cities: [] });
-  assert.deepEqual(reporting.getAudience().gender, []);
+  assert.deepEqual(reporting.getAudience().gender, [{ label: 'Femmes', value: 1640 }, { label: 'Hommes', value: 360 }]);
 });
 
 test('reach audience is available per campaign but cannot be added across campaigns', () => {
@@ -369,5 +370,6 @@ test('demonstration retains simulated breakdowns but never invents reach or leak
   }
   install([record('real')]);
   assert.equal(reporting.getAudience().source, 'manual');
-  assert.deepEqual(reporting.getAudience().cities, []);
+  assert.equal(reporting.getAudience().cities.reduce((sum, row) => sum + row.value, 0), 1000);
+  assert.equal(reporting.getAudience().dimensions.cities.profile, 'declared');
 });

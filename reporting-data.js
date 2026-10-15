@@ -24,6 +24,11 @@ const AUDIENCE_LABELS = Object.freeze({
 const AUDIENCE_DIMENSIONS = Object.keys(AUDIENCE_LABELS);
 const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const CAMPAIGN_LAUNCH_DATE = '2026-10-09';
+const DECLARED_AUDIENCE_PROFILE = Object.freeze({
+  gender: Object.freeze([['Femmes', 82], ['Hommes', 18]]),
+  ages: Object.freeze([['18–24', 17], ['25–34', 38], ['34–44', 32], ['45–65', 13]]),
+  cities: Object.freeze([['Casa', 18], ['Rabat', 12], ['Agadir', 12], ['Marrakech', 10], ['Tanger', 10], ['Fès–Meknès', 10], ['Oriental', 8], ['Laâyoune', 4], ['Autres', 16]]),
+});
 let reportingState = { mode: 'loading', updatedAt: null };
 let reportingGeneration = 0;
 
@@ -225,6 +230,16 @@ function estimatedTimeline(rows, totals) {
   return dates.map((date, index) => ({ date, ...Object.fromEntries(Object.entries(values).map(([field, series]) => [field, series[index]])) }));
 }
 
+function profileRows(total, profile) {
+  const units = Math.round(total);
+  const raw = profile.map(([, share]) => units * share / 100);
+  const values = raw.map(value => Math.floor(value));
+  let remainder = units - values.reduce((sum, value) => sum + value, 0);
+  const order = raw.map((value, index) => index).sort((a, b) => raw[b] % 1 - raw[a] % 1 || a - b);
+  for (let index = 0; remainder > 0; index = (index + 1) % order.length, remainder -= 1) values[order[index]] += 1;
+  return profile.map(([label], index) => ({ label, value: values[index] }));
+}
+
 export function getSummary({ period, platform = 'all', campaign = 'all' } = {}) {
   if (reportingState.mode === 'loading') throw new Error('Les campagnes ne sont pas encore chargées.');
   if (reportingState.mode === 'demo') {
@@ -272,6 +287,9 @@ export function getAudience(options = {}) {
   const reachRequiresSingleCampaign = metric === 'reach' && campaignCount > 1;
   const source = reportingState.mode;
   const total = metric === 'reach' ? summary.totals.reach ?? null : summary.totals[metric];
+  const hasReportedAudience = summary.rows.some(campaign => AUDIENCE_DIMENSIONS.some(dimension =>
+    campaign.audience?.[dimension]?.some(row => row[metric] !== null)
+  ));
   const audience = { total, cities: [], gender: [], ages: [], source, dimensions: {}, reachRequiresSingleCampaign };
   if (source === 'demo' && metric !== 'reach') {
     const demo = demonstration.getAudience({ ...options, metric });
@@ -322,6 +340,16 @@ export function getAudience(options = {}) {
       availableCampaigns,
       campaignCount,
     };
+    // A profile supplied by the client is shown until campaign-level audience
+    // reports are entered. It never replaces actual rows from the back-office.
+    if (source === 'manual' && !hasReportedAudience && metric !== 'reach' && total > 0 && rows.length === 0) {
+      const declared = profileRows(total, DECLARED_AUDIENCE_PROFILE[dimension]);
+      audience[dimension] = declared;
+      audience.dimensions[dimension] = {
+        total, reportedTotal: total, coverage: 1, partial: false,
+        availableCampaigns: 0, campaignCount, profile: 'declared',
+      };
+    }
   }
   return audience;
 }

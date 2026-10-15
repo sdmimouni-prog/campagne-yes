@@ -112,7 +112,7 @@ function audienceContext(audience, dimension, rows) {
   const total = details ? amount(details.total) : Math.max(amount(audience.total), reportedTotal);
   return {
     ...details, total, reportedTotal,
-    source: audience.source === 'manual' ? 'manual' : 'demo',
+    source: details?.profile === 'declared' ? 'declared' : audience.source === 'manual' ? 'manual' : 'demo',
     partial: details?.partial ?? reportedTotal < total,
     reportedBasis: audience.total == null,
     needsCampaign: Boolean(audience.reachRequiresSingleCampaign),
@@ -121,7 +121,7 @@ function audienceContext(audience, dimension, rows) {
 const share = (value, context) => context.total > 0 ? `${PERCENT.format(ratio(value, context.total))} %` : '—';
 
 function cardFooter(context) {
-  const source = context.source === 'manual' ? 'Saisie manuelle' : 'Démonstration';
+  const source = context.source === 'declared' ? 'Profil déclaré' : context.source === 'manual' ? 'Saisie manuelle' : 'Démonstration';
   const coverage = context.reportedBasis ? '% des données renseignées' : context.total > 0 ? `Détail sur ${share(context.reportedTotal, context)} du total` : 'Valeurs renseignées à zéro';
   const campaigns = context.campaignCount > 1 ? ` · ${context.availableCampaigns}/${context.campaignCount} campagnes renseignées` : '';
   return `<div class="audience-card-footer${context.partial ? ' audience-partial' : ''}"><span class="audience-footer-dot" aria-hidden="true"></span><span>${escape(`${source} · ${context.partial ? 'Données partielles · ' : ''}${coverage}${campaigns}`)}</span></div>`;
