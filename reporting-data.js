@@ -23,7 +23,7 @@ const AUDIENCE_LABELS = Object.freeze({
 });
 const AUDIENCE_DIMENSIONS = Object.keys(AUDIENCE_LABELS);
 const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-const CAMPAIGN_LAUNCH_DATE = '2026-10-09';
+export const CAMPAIGN_LAUNCH_DATE = '2026-10-09';
 const DECLARED_AUDIENCE_PROFILE = Object.freeze({
   gender: Object.freeze([['Femmes', 82], ['Hommes', 18]]),
   ages: Object.freeze([['18–24', 17], ['25–34', 38], ['34–44', 32], ['45–65', 13]]),

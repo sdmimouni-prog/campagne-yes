@@ -1,9 +1,10 @@
-import { PLATFORMS, CAMPAIGNS, PERIODS, getSummary, getAudience, loadReportingData, getReportingState, clearReportingData } from './reporting-data.js';
+import { PLATFORMS, CAMPAIGNS, PERIODS, CAMPAIGN_LAUNCH_DATE, getSummary, getAudience, loadReportingData, getReportingState, clearReportingData } from './reporting-data.js';
 import { renderTrend, renderAudience } from './dashboard-charts.js';
 import { getPortalMode, signOut, onSessionChange } from './portal-service.js';
 
 const $ = id => document.getElementById(id);
 const number = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const reportDate = new Intl.DateTimeFormat('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'Africa/Casablanca' });
 const decimal = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const compact = new Intl.NumberFormat('fr-FR', { notation:'compact', maximumFractionDigits:2 });
@@ -116,7 +117,7 @@ function renderTable() {
   $('empty-state').hidden=!empty;
   $('show-campaigns').hidden=isCampaigns;
   $('results-title').textContent=state.view==='influence'?'Liste des influenceurs':state.view==='campaigns'?'Toutes les campagnes':channelNames[state.view]?`Campagnes ${channelNames[state.view]}`:'Performances par plateforme';
-  $('results-description').textContent=empty?'Aucun résultat sur la sélection actuelle.':manual()?'Résultats cumulés sur les périodes renseignées. « — » : donnée non renseignée.':'Le détail de vos résultats sur la période sélectionnée.';
+  $('results-description').textContent=empty?'Aucun résultat sur la sélection actuelle.':manual()?`Résultats cumulés du ${reportDate.format(new Date(`${CAMPAIGN_LAUNCH_DATE}T12:00:00Z`))} au ${reportDate.format(new Date())}.`:'Le détail de vos résultats sur la période sélectionnée.';
   $('results-table').querySelector('caption').textContent=state.view==='influence'?'Liste des influenceurs YES':`Résultats ${manual()?'renseignés':'de démonstration'} pour les filtres sélectionnés`;
   $('empty-state').querySelector('h3').textContent=state.view==='influence'?'Aucun influenceur pour le moment':'Aucune campagne en cours';
   if(empty) {
