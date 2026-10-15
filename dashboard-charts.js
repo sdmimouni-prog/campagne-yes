@@ -127,6 +127,14 @@ function emptyAudience(context, metric) {
   return `<div class="chart-empty"><span class="chart-empty-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>${escape(title)}</strong><p>${escape(description)}</p></div>`;
 }
 
+function cardFooter(context) {
+  if (context.source === 'declared') return '';
+  const source = context.source === 'manual' ? 'Saisie manuelle' : 'Démonstration';
+  const coverage = context.reportedBasis ? '% des données renseignées' : context.total > 0 ? `Détail sur ${share(context.reportedTotal, context)} du total` : 'Valeurs renseignées à zéro';
+  const campaigns = context.campaignCount > 1 ? ` · ${context.availableCampaigns}/${context.campaignCount} campagnes renseignées` : '';
+  return `<div class="audience-card-footer${context.partial ? ' audience-partial' : ''}"><span class="audience-footer-dot" aria-hidden="true"></span><span>${escape(`${source} · ${context.partial ? 'Données partielles · ' : ''}${coverage}${campaigns}`)}</span></div>`;
+}
+
 function renderAudienceTable(rows, context, metric, title) {
   return `<div class="audience-table-scroll"><table class="audience-table"><caption class="sr-only">${escape(`${title} · ${metricInfo(metric).label}`)}</caption><thead><tr><th scope="col">Catégorie</th><th scope="col" class="numeric">${escape(metricInfo(metric).label)}</th><th scope="col" class="numeric">Part</th></tr></thead><tbody>${rows.map(row => `<tr><th scope="row">${escape(row.label)}</th><td class="numeric">${escape(NUMBER.format(row.value))}</td><td class="numeric">${escape(share(row.value, context))}</td></tr>`).join('')}</tbody><tfoot><tr><th scope="row">Total renseigné</th><td class="numeric">${escape(NUMBER.format(context.reportedTotal))}</td><td class="numeric">${escape(share(context.reportedTotal, context))}</td></tr></tfoot></table></div>`;
 }
@@ -174,7 +182,7 @@ export function renderAudience(container, audience = {}, { metric = 'impressions
     if (dimension === 'cities') rows.sort((a, b) => b.value - a.value);
     const context = audienceContext(audience, dimension, rows);
     const content = !rows.length ? emptyAudience(context, metric) : view === 'tables' ? renderAudienceTable(rows, context, metric, title) : chart(rows, context, metric);
-    return `<article class="audience-card audience-${dimension}">${cardHeader(title, dimension, metric)}${content}</article>`;
+    return `<article class="audience-card audience-${dimension}">${cardHeader(title, dimension, metric)}${content}${rows.length ? cardFooter(context) : ''}</article>`;
   }).join('');
   if (typeof target.querySelectorAll !== 'function') return;
   target.querySelectorAll('.audience-gender').forEach(card => {
