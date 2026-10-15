@@ -67,24 +67,12 @@ function renderKpis() {
   const t=summary.totals;
   $('kpi-impressions').textContent=number.format(t.impressions);
   $('kpi-clicks').textContent=number.format(t.clicks);
-  $('kpi-spend').textContent=value(t.spend,decimal);
+  $('kpi-reach').textContent=value(t.reach);
   $('kpi-ctr').textContent=summary.rows.length?ctr(t.clicks,t.impressions):'—';
-  $('kpi-budget').textContent=`${money(summary.budget)} ${manual()?'de budget renseigné':'prévus au trimestre'}`;
-  $('kpi-active').textContent=number.format(t.activeCampaigns).padStart(2,'0');
-  $('kpi-active-caption').textContent=`Sur ${summary.byPlatform.length} plateforme${summary.byPlatform.length>1?'s':''}`;
+  $('kpi-views').textContent=value(t.views);
   // This miniature follows the same selected data as the full chart.
   const points=summary.timeline.map((r,i,rows)=>`${i/(Math.max(1,rows.length-1))*76+1},${22-r.impressions/Math.max(1,...rows.map(x=>x.impressions))*20}`).join(' ');
   document.querySelector('.sparkline').innerHTML=`<polyline points="${points}"/>`;
-}
-function renderBudget() {
-  const colors=['#7635ef','#a776ef','#ddc8fc','#9975b2'];
-  $('total-budget').textContent=decimal.format(summary.budget);
-  $('budget-stacked').innerHTML=summary.byPlatform.map((p,i)=>`<span style="width:${summary.budget?p.budget/summary.budget*100:0}%;background:${colors[i%colors.length]}"></span>`).join('');
-  $('budget-legend').innerHTML=summary.byPlatform.map((p,i)=>`<div class="budget-legend"><span><i style="background:${colors[i%colors.length]}"></i>${esc(p.shortName)}</span><strong>${money(p.budget)}<small>${summary.budget?number.format(p.budget/summary.budget*100)+' %':'—'}</small></strong></div>`).join('');
-  $('budget-spend').textContent=money(summary.totals.spend);
-  document.querySelector('.budget-panel .panel-heading p').textContent=manual()?'Budgets des campagnes sélectionnées':'Enveloppe média · Oct.–Déc. 2026';
-  document.querySelector('.budget-total>span').textContent=manual()?'MAD renseignés':'MAD HT prévus';
-  document.querySelector('.budget-note').textContent=manual()?'Les dépenses non renseignées sont affichées « — ».':'Hors influence et frais de gestion.';
 }
 function renderCharts() {
   const range=PERIODS.find(p=>p.id===state.period);
@@ -172,7 +160,7 @@ function render() {
   const resultsPanel=$('results-table').closest('.results-panel');
   const resultsPosition=['meta','tiktok','youtube'].includes(state.view)?$('kpi-grid'):$('bottom-content');
   if(resultsPanel.nextElementSibling!==resultsPosition)resultsPosition.before(resultsPanel);
-  renderKpis();renderBudget();renderTable();
+  renderKpis();renderTable();
   if(!$('overview-content').hidden){renderCharts();renderInsight();}
   $('announcement').textContent=`${title}. ${PERIODS.find(p=>p.id===state.period).label}. ${inactive()?'Aucune campagne.':`${number.format(summary.totals.impressions)} impressions ${manual()?'renseignées':'de démonstration'}.`}`;
 }
@@ -277,8 +265,8 @@ function clearProtectedData() {
   initialized=false;summary=null;audience=null;
   clearReportingData();
   $('main').classList.add('data-loading');
-  for(const id of ['results-body','budget-legend','budget-stacked','audience-charts','trend-chart','insight-text','dialog-content'])$(id).replaceChildren();
-  for(const id of ['kpi-impressions','kpi-clicks','kpi-spend','kpi-active','kpi-budget','kpi-ctr','total-budget','budget-spend'])$(id).textContent='—';
+  for(const id of ['results-body','audience-charts','trend-chart','insight-text','dialog-content'])$(id).replaceChildren();
+  for(const id of ['kpi-impressions','kpi-clicks','kpi-reach','kpi-views','kpi-ctr'])$(id).textContent='—';
   $('campaign-filter').innerHTML='<option value="all">Toutes les campagnes</option>';
   $('dashboard-dialog').close();
   if(exportUrl){URL.revokeObjectURL(exportUrl);exportUrl=null;}
