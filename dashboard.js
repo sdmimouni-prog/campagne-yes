@@ -76,7 +76,9 @@ function renderKpis() {
 }
 function renderCharts() {
   const range=PERIODS.find(p=>p.id===state.period);
-  $('trend-subtitle').textContent=`${range.label} · ${manual()?'résultats renseignés':'résultats simulés'}`;
+  $('trend-subtitle').textContent=summary.timelineEstimated
+    ? 'Depuis le 09 octobre 2026 · évolution estimée à partir des totaux renseignés'
+    : `${range.label} · ${manual()?'résultats renseignés':'résultats simulés'}`;
   $('trend-total').textContent=state.trend==='spend'?money(summary.totals.spend):value(summary.totals[state.trend]);
   $('trend-measure').textContent=metricNames[state.trend];
   document.querySelectorAll('[data-trend]').forEach(b=>{
@@ -85,7 +87,11 @@ function renderCharts() {
   });
   const missingMetric=summary.timeline.some(row=>row[state.trend]==null);
   renderTrend($('trend-chart'),missingMetric?[]:summary.timeline,state.trend);
-  if(manual()&&(summary.timelineUnavailable||missingMetric)) {
+  if(summary.timelineEstimated) {
+    const label=$('trend-chart').querySelector('.trend-footnote span:last-child');
+    if(label) label.textContent='Estimation depuis le lancement';
+  }
+  if(manual()&&((summary.timelineUnavailable&&!summary.timelineEstimated)||missingMetric)) {
     $('trend-chart').innerHTML=`<div class="chart-empty"><span class="chart-empty-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>${summary.timelineUnavailable?'Détail quotidien non renseigné':'Dépenses non renseignées'}</strong><p>${summary.timelineUnavailable?'Les chiffres saisis sont des totaux sur une période. Une courbe nécessite les résultats jour par jour.':'Renseignez les dépenses pour afficher leur évolution.'}</p></div>`;
   }
   renderAudience($('audience-charts'),audience,{metric:state.audience,view:state.audienceView});

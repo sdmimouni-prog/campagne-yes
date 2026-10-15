@@ -80,10 +80,15 @@ test('legacy TrueViews data is omitted from campaigns, results and aggregates', 
   assert.ok(demo.byPlatform.every(platform => !Object.hasOwn(platform, 'trueviews')));
 });
 
-test('manual totals do not produce invented daily or audience measurements', () => {
+test('manual totals generate a clearly marked estimated timeline from the campaign launch', () => {
   install([record('total')]);
-  assert.deepEqual(reporting.getSummary().timeline, []);
-  assert.equal(reporting.getSummary().timelineUnavailable, true);
+  const estimated = reporting.getSummary();
+  assert.equal(estimated.timelineUnavailable, true);
+  assert.equal(estimated.timelineEstimated, true);
+  assert.equal(estimated.timeline[0].date, '2026-10-09');
+  assert.equal(estimated.timeline.at(-1).date, '2026-10-31');
+  assert.equal(estimated.timeline.reduce((sum, day) => sum + day.impressions, 0), 1000);
+  assert.equal(estimated.timeline.reduce((sum, day) => sum + day.clicks, 0), 10);
   const audience = reporting.getAudience({ metric: 'clicks' });
   assert.equal(audience.total, 10);
   assert.equal(audience.source, 'manual');
