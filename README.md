@@ -74,6 +74,7 @@ L'import de production a conservé les UUID et les horodatages `created_at` et `
 ## Dashboard et sources
 
 - Facebook et Instagram sont réunis dans Meta ; leurs campagnes restent distinctes dans le tableau et le filtre.
+- Les vues vidéo additionnent les valeurs renseignées des campagnes sélectionnées ; les campagnes sans mesure vidéo ne masquent plus les vues disponibles. Le Reach reste affiché pour une seule campagne sélectionnée, car additionner des audiences uniques créerait des doublons.
 - Les tableaux Meta, YouTube et TikTok précèdent les indicateurs et graphiques.
 - Display devient actif dès qu’une campagne y est créée. Influence, SMS, WhatsApp et Emailing restent vides.
 - Toutes les données demandées sont disponibles dans les tableaux, fiches et export CSV. Les cellules CSV vides signifient « non renseigné » ; la source et la période cumulée sont indiquées. Les noms sont protégés contre l’interprétation de formules lors de l’export.

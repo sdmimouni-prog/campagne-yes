@@ -184,7 +184,12 @@ function aggregateMetrics(rows) {
   };
   for (const metric of OPTIONAL_METRICS) {
     // Missing values are unknown, not zero. Incomplete aggregates stay unknown.
-    metrics[metric] = !rows.length || rows.some(row => row[metric] === null) ? null :
+    // Video views are additive across campaigns when present. Campaigns that do
+    // not report a video metric must not hide views reported by video channels.
+    // Keep the aggregate unknown only when no selected campaign reports views.
+    metrics[metric] = metric === 'views'
+      ? rows.some(row => row.views !== null) ? rows.reduce((sum, row) => sum + (row.views ?? 0), 0) : null
+      : !rows.length || rows.some(row => row[metric] === null) ? null :
       metric === 'spend'
         ? roundMoney(rows.reduce((sum, row) => sum + Math.round(row.spend * 100), 0) / 100)
         : rows.reduce((sum, row) => sum + row[metric], 0);

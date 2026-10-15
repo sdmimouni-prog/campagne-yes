@@ -68,6 +68,9 @@ function renderKpis() {
   $('kpi-impressions').textContent=number.format(t.impressions);
   $('kpi-clicks').textContent=number.format(t.clicks);
   $('kpi-reach').textContent=value(t.reach);
+  $('kpi-reach-note').textContent=manual()&&summary.rows.length>1
+    ? 'Sélectionnez une campagne pour son Reach'
+    : 'Personnes uniques touchées';
   $('kpi-ctr').textContent=summary.rows.length?ctr(t.clicks,t.impressions):'—';
   $('kpi-views').textContent=value(t.views);
   // This miniature follows the same selected data as the full chart.
@@ -77,7 +80,7 @@ function renderKpis() {
 function renderCharts() {
   const range=PERIODS.find(p=>p.id===state.period);
   $('trend-subtitle').textContent=summary.timelineEstimated
-    ? 'Depuis le 09 octobre 2026 · évolution estimée à partir des totaux renseignés'
+    ? ''
     : `${range.label} · ${manual()?'résultats renseignés':'résultats simulés'}`;
   $('trend-total').textContent=state.trend==='spend'?money(summary.totals.spend):value(summary.totals[state.trend]);
   $('trend-measure').textContent=metricNames[state.trend];
