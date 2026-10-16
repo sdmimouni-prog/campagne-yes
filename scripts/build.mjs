@@ -8,7 +8,7 @@ const local=process.argv.includes('--local');
 const vendorOnly=process.argv.includes('--vendor-only');
 const output=resolve(root,'dist');
 const files=[
-  'index.html','styles.css','app.js','dashboard.html','dashboard.css','dashboard.js',
+  'index.html','favicon.svg','styles.css','app.js','dashboard.html','dashboard.css','dashboard.js',
   'dashboard-charts.css','dashboard-charts.js','dashboard-data.js','reporting-data.js',
   'gestion-campagnes.html','gestion-campagnes.css','gestion-campagnes.js','audience-editor.js','portal-service.js'
 ];

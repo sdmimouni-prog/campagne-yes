@@ -24,6 +24,7 @@ const ctrValue = (clicks,impressions) => Number.isFinite(clicks)&&clicks>=0&&Num
 const ctr = (clicks,impressions) => {const value=ctrValue(clicks,impressions);return value==null?'—':`${percent.format(value)} %`;};
 const value = (amount,format=number) => amount==null?'—':format.format(amount);
 const money = amount => amount==null?'—':`${decimal.format(amount)} MAD`;
+const duration = amount => amount==null?'—':`${decimal.format(amount)} s`;
 const date = input => new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(`${input}T12:00:00`));
 const arrow = '<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>';
 
@@ -126,19 +127,19 @@ function renderTable() {
   $('results-table').querySelector('caption').textContent=state.view==='influence'?'Liste des influenceurs YES':`Résultats ${manual()?'renseignés':'de démonstration'} pour les filtres sélectionnés`;
   $('empty-state').querySelector('h3').textContent=state.view==='influence'?'Aucun influenceur pour le moment':'Aucune campagne en cours';
   if(empty) {
-    const headers=state.view==='influence'?['Influenceur','Plateforme','Campagne','Contenus','Statut','Reach','Fréquence']:['sms','whatsapp','email'].includes(state.view)?['Campagne','Période','Statut','Envois','Délivrés',...(state.view==='email'?['Ouvertures']:[]),'Clics','Reach','Fréquence']:['Campagne','Période','Budget MAD','Impressions','Reach','Fréquence','Clics','CTR','Vues vidéo','Interactions'];
+    const headers=state.view==='influence'?['Influenceur','Plateforme','Campagne','Contenus','Statut','Reach','Fréquence']:['sms','whatsapp','email'].includes(state.view)?['Campagne','Période','Statut','Envois','Délivrés',...(state.view==='email'?['Ouvertures']:[]),'Clics','Reach','Fréquence']:['Campagne','Période','Budget MAD','Impressions','Reach','Fréquence','Clics','CTR','Vues vidéo','Lectures de vidéo de 3 secondes','ThruPlays de 15 secondes','Durée de lecture moyenne de la vidéo (s)','Interactions'];
     $('results-head').innerHTML=`<tr>${headers.map(h=>`<th scope="col">${h}</th>`).join('')}</tr>`;
     $('results-body').innerHTML='';
     $('empty-description').textContent=state.view==='influence'?'Les influenceurs et leurs collaborations avec YES apparaîtront ici lorsqu’ils seront ajoutés.':summary.excludedPartialCount?'Sélectionnez « Toutes les périodes » pour consulter les totaux des campagnes qui couvrent plusieurs mois.':`Vos campagnes ${channelNames[state.view]||''} apparaîtront ici lorsqu’elles seront ajoutées et comprises dans la période sélectionnée.`;
     return;
   }
-  const headers=[isCampaigns?'Campagne':'Plateforme','Statut',manual()?'Budget MAD':'Budget trimestre','Impressions','Reach','Fréquence','Vues vidéo','Clics','CTR',...(manual()?['Interactions']:[]),''];
+  const headers=[isCampaigns?'Campagne':'Plateforme','Statut',manual()?'Budget MAD':'Budget trimestre','Impressions','Reach','Fréquence','Vues vidéo','Lectures de vidéo de 3 secondes','ThruPlays de 15 secondes','Durée de lecture moyenne de la vidéo (s)','Clics','CTR',...(manual()?['Interactions']:[]),''];
   $('results-head').innerHTML=`<tr>${headers.map((h,i)=>`<th scope="col"${i>1&&i<headers.length-1?' class="numeric"':''}>${h||'<span class="sr-only">Détails</span>'}</th>`).join('')}</tr>`;
   const selectedIds=new Set(summary.rows.map(r=>r.campaignId));
   const records=isCampaigns?CAMPAIGNS.filter(c=>selectedIds.has(c.id)).map(c=>({...getSummary({...query(),campaign:c.id}).byPlatform[0],campaign:c})):summary.byPlatform;
-  const rowsHtml=records.map(p=>`<tr><td>${platformCell(p.id,p.campaign?p.campaign.name:p.shortName,p.campaign?`${channelLabels[p.campaign.channel]||p.shortName} · ${date(p.campaign.start)} – ${date(p.campaign.end)}`:p.id==='meta'?'Facebook & Instagram':p.name)}</td><td><span class="status-pill"><i></i>Active</span></td><td class="numeric">${money(p.budget)}</td><td class="numeric">${value(p.impressions)}</td><td class="numeric">${value(p.reach)}</td><td class="numeric">${value(p.frequency,decimal)}</td><td class="numeric">${value(p.views)}</td><td class="numeric">${value(p.clicks)}</td><td class="numeric">${ctr(p.clicks,p.impressions)}</td>${manual()?`<td class="numeric">${value(p.interactions)}</td>`:''}<td><button class="row-button" data-detail="${p.campaign?p.campaign.id:p.id}" aria-label="Voir les détails de ${esc(p.campaign?p.campaign.name:p.shortName)}">${arrow}</button></td></tr>`).join('');
+  const rowsHtml=records.map(p=>`<tr><td>${platformCell(p.id,p.campaign?p.campaign.name:p.shortName,p.campaign?`${channelLabels[p.campaign.channel]||p.shortName} · ${date(p.campaign.start)} – ${date(p.campaign.end)}`:p.id==='meta'?'Facebook & Instagram':p.name)}</td><td><span class="status-pill"><i></i>Active</span></td><td class="numeric">${money(p.budget)}</td><td class="numeric">${value(p.impressions)}</td><td class="numeric">${value(p.reach)}</td><td class="numeric">${value(p.frequency,decimal)}</td><td class="numeric">${value(p.views)}</td><td class="numeric">${value(p.videoViews3s)}</td><td class="numeric">${value(p.thruPlays15s)}</td><td class="numeric">${duration(p.averageVideoWatchTimeSeconds)}</td><td class="numeric">${value(p.clicks)}</td><td class="numeric">${ctr(p.clicks,p.impressions)}</td>${manual()?`<td class="numeric">${value(p.interactions)}</td>`:''}<td><button class="row-button" data-detail="${p.campaign?p.campaign.id:p.id}" aria-label="Voir les détails de ${esc(p.campaign?p.campaign.name:p.shortName)}">${arrow}</button></td></tr>`).join('');
   const t=summary.totals;
-  const totalRow=`<tr class="total-row"><td><strong>TOTAL</strong></td><td></td><td class="numeric">${money(summary.budget)}</td><td class="numeric">${value(t.impressions)}</td><td class="numeric">${value(t.reach)}</td><td class="numeric">${value(t.frequency,decimal)}</td><td class="numeric">${value(t.views)}</td><td class="numeric">${value(t.clicks)}</td><td class="numeric">${ctr(t.clicks,t.impressions)}</td>${manual()?`<td class="numeric">${value(t.interactions)}</td>`:''}<td></td></tr>`;
+  const totalRow=`<tr class="total-row"><td><strong>TOTAL</strong></td><td></td><td class="numeric">${money(summary.budget)}</td><td class="numeric">${value(t.impressions)}</td><td class="numeric">${value(t.reach)}</td><td class="numeric">${value(t.frequency,decimal)}</td><td class="numeric">${value(t.views)}</td><td class="numeric">${value(t.videoViews3s)}</td><td class="numeric">${value(t.thruPlays15s)}</td><td class="numeric">${duration(t.averageVideoWatchTimeSeconds)}</td><td class="numeric">${value(t.clicks)}</td><td class="numeric">${ctr(t.clicks,t.impressions)}</td>${manual()?`<td class="numeric">${value(t.interactions)}</td>`:''}<td></td></tr>`;
   $('results-body').innerHTML=rowsHtml+totalRow;
 }
 function renderInsight() {
@@ -174,8 +175,13 @@ function render() {
   $('kpi-grid').hidden=inactive();
   $('bottom-content').hidden=inactive()||state.view==='campaigns';
   const resultsPanel=$('results-table').closest('.results-panel');
-  const resultsPosition=['meta','tiktok','youtube'].includes(state.view)?$('kpi-grid'):$('bottom-content');
-  if(resultsPanel.nextElementSibling!==resultsPosition)resultsPosition.before(resultsPanel);
+  if(['meta','tiktok','youtube','display'].includes(state.view)) {
+    // Keep the channel KPI cards before the results table on every channel view.
+    if($('kpi-grid').nextElementSibling!==resultsPanel)$('kpi-grid').after(resultsPanel);
+  } else {
+    const resultsPosition=state.view==='campaigns'?'bottom-content':'bottom-content';
+    if(resultsPanel.nextElementSibling!==$(resultsPosition))$(resultsPosition).before(resultsPanel);
+  }
   renderKpis();renderTable();
   if(!$('overview-content').hidden){renderCharts();renderInsight();}
   $('announcement').textContent=`${title}. ${PERIODS.find(p=>p.id===state.period).label}. ${inactive()?'Aucune campagne.':`${number.format(summary.totals.impressions)} impressions ${manual()?'renseignées':'de démonstration'}.`}`;
@@ -188,7 +194,7 @@ function showDetail(id) {
   const range=PERIODS.find(r=>r.id===state.period);
   if(manual()) {
     const selection=getSummary({...query(),platform:p.id,campaign:campaign?.id||state.campaign});
-    openDialog(campaign?.name||p.name,`<p><strong>Saisie manuelle · ${esc(campaign?channelLabels[campaign.channel]:p.name)}</strong><br>${campaign?`${date(campaign.start)} – ${date(campaign.end)}`:esc(range.label)}</p><div class="detail-grid">${[['Impressions',value(data.impressions)],['Reach',value(data.reach)],['Fréquence',value(data.frequency,decimal)],['Clics',value(data.clicks)],['CTR',ctr(data.clicks,data.impressions)],['Budget',money(selection.budget)],['Dépenses réelles',money(data.spend)],['Vues de vidéos',value(data.views)],['Interactions',value(data.interactions)]].map(([label,amount])=>`<div><small>${label}</small><strong>${amount}</strong></div>`).join('')}</div><p>Totaux cumulés sur les périodes renseignées. « — » signifie que la donnée n’a pas été renseignée.</p>`);
+    openDialog(campaign?.name||p.name,`<p><strong>Saisie manuelle · ${esc(campaign?channelLabels[campaign.channel]:p.name)}</strong><br>${campaign?`${date(campaign.start)} – ${date(campaign.end)}`:esc(range.label)}</p><div class="detail-grid">${[['Impressions',value(data.impressions)],['Reach',value(data.reach)],['Fréquence',value(data.frequency,decimal)],['Clics',value(data.clicks)],['CTR',ctr(data.clicks,data.impressions)],['Budget',money(selection.budget)],['Dépenses réelles',money(data.spend)],['Vues de vidéos',value(data.views)],['Lectures de vidéo de 3 secondes',value(data.videoViews3s)],['ThruPlays de 15 secondes',value(data.thruPlays15s)],['Durée de lecture moyenne de la vidéo',duration(data.averageVideoWatchTimeSeconds)],['Interactions',value(data.interactions)]].map(([label,amount])=>`<div><small>${label}</small><strong>${amount}</strong></div>`).join('')}</div><p>Totaux cumulés sur les périodes renseignées. « — » signifie que la donnée n’a pas été renseignée.</p>`);
     return;
   }
   openDialog(campaign?.name||p.name,`<p><strong>Données de démonstration · ${esc(range.label)}</strong><br>Les résultats ci-dessous sont fictifs.</p><div class="detail-grid"><div><small>Impressions</small><strong>${compact.format(data.impressions)}</strong></div><div><small>Vues vidéo · ${esc(p.shortName)}</small><strong>${compact.format(data.views)}</strong></div><div><small>Dépenses simulées</small><strong>${money(data.spend)}</strong></div><div><small>Clics</small><strong>${number.format(data.clicks)}</strong></div></div><p>Budget prévu au plan média pour ce canal : <strong>${money(p.budget)} HT</strong> sur octobre–décembre 2026.<br>CPM simulé : ${data.impressions?decimal.format(data.spend/data.impressions*1000):'—'} DH · CTR : ${ctr(data.clicks,data.impressions)}.</p><p>La portée unique et les placements Facebook / Instagram seront affichés lorsqu’une source permettra de les mesurer séparément.</p>`);
@@ -198,7 +204,7 @@ function exportReport() {
   const records=[['Type','Période','Plateforme','Campagne','Date','Dimension','Catégorie','Mesure','Valeur','Unité','Source']];
   summary.rows.forEach(r=>{
     const campaign=CAMPAIGNS.find(c=>c.id===r.campaignId);
-    for(const metric of ['impressions','reach','frequency','clicks','views','spend',...(manual()?['interactions','ctr']:[])])records.push(['Résultat',manual()?`${r.start} / ${r.end}`:range.label,channelLabels[r.channel]||channelNames[r.platform],campaign.name,manual()?'':r.date,'','',metric,(metric==='ctr'?ctrValue(r.clicks,r.impressions):r[metric])??'',metric==='spend'?'MAD':metric==='ctr'?'%':metric==='frequency'?'fois':'nombre',manual()?'Saisie manuelle — cumul sur la période':'DÉMONSTRATION — fictif']);
+    for(const metric of ['impressions','reach','frequency','clicks','views','videoViews3s','thruPlays15s','averageVideoWatchTimeSeconds','spend',...(manual()?['interactions','ctr']:[])])records.push(['Résultat',manual()?`${r.start} / ${r.end}`:range.label,channelLabels[r.channel]||channelNames[r.platform],campaign.name,manual()?'':r.date,'','',metric,(metric==='ctr'?ctrValue(r.clicks,r.impressions):r[metric])??'',metric==='spend'?'MAD':metric==='ctr'?'%':metric==='frequency'?'fois':metric==='averageVideoWatchTimeSeconds'?'secondes':'nombre',manual()?'Saisie manuelle — cumul sur la période':'DÉMONSTRATION — fictif']);
   });
   if(manual())summary.rows.forEach(r=>records.push(['Budget',`${r.start} / ${r.end}`,channelLabels[r.channel],CAMPAIGNS.find(c=>c.id===r.campaignId).name,'','','','Budget',r.budget,'MAD','Saisie manuelle']));
   else summary.byPlatform.forEach(p=>records.push(['Budget prévu','Octobre–Décembre 2026',p.name,'','','','','Budget trimestre',p.budget,'MAD HT','Plan média fourni']));

@@ -12,6 +12,8 @@ La [migration additive `202610140001`](supabase/migrations/202610140001_campaign
 
 La [migration `202610140003`](supabase/migrations/202610140003_campaign_audience.sql) a été appliquée en production le 14 octobre 2026. La lecture authentifiée confirme les trois répartitions d'audience, initialement vides, sur les 17 campagnes. L'empreinte des champs préexistants est identique avant et après la migration : aucun chiffre n'a changé.
 
+La migration additive `202610160001_campaign_video_metrics.sql` ajoute les lectures vidéo de 3 secondes, les ThruPlays de 15 secondes et la durée moyenne de lecture vidéo en secondes. Elle a été appliquée dans Supabase en production le 16 octobre 2026 ; les trois colonnes ont été vérifiées dans `portal_campaigns`.
+
 Le compte SIPAT est créé dans Auth. Le 14 octobre 2026, à la demande explicite de l'utilisateur et après sa confirmation, son rôle pour `yes-baby` dans `portal_memberships` a été changé de `viewer` à `admin`. L'enregistrement a été confirmé dans Supabase. Ce rôle autorise l'ajout, la modification, la suppression restaurable et la restauration des campagnes. Le back-office déployé au commit `66d8029` présente l'action « Supprimer » comme une suppression restaurable.
 
 La connexion avec les identifiants SIPAT existants ouvre désormais le back-office : les 11 campagnes, le formulaire d'ajout et les actions « Modifier » et « Supprimer » sont accessibles. L'ouverture du formulaire prérempli de la campagne TopView a été vérifiée. Aucune campagne n'a été modifiée pendant ce contrôle ; les opérations d'écriture restent à vérifier en production. Voir le [guide Supabase](supabase/README.md).

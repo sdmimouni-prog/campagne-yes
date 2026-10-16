@@ -121,7 +121,7 @@ def validate_campaign(payload):
             errors[field] = "Renseignez une date valide au format AAAA-MM-JJ."
     if "start" in result and "end" in result and result["start"] > result["end"]:
         errors["end"] = "La fin doit être égale ou postérieure au début."
-    for field in ("budget", "spend", "impressions", "reach", "clicks", "views", "interactions"):
+    for field in ("budget", "spend", "impressions", "reach", "clicks", "views", "videoViews3s", "thruPlays15s", "averageVideoWatchTimeSeconds", "interactions"):
         value = payload.get(field)
         if value is None and field not in ("budget", "impressions", "clicks"):
             result[field] = None
@@ -130,9 +130,9 @@ def validate_campaign(payload):
                 or value < 0 or value > MAX_NUMBER or not math.isfinite(value)):
             errors[field] = "Saisissez un nombre positif ou nul, inférieur ou égal à 9 000 milliards."
             continue
-        if field in ("budget", "spend"):
+        if field in ("budget", "spend", "averageVideoWatchTimeSeconds"):
             if Decimal(str(value)) * 100 != (Decimal(str(value)) * 100).to_integral_value():
-                errors[field] = "Le montant accepte deux décimales au maximum."
+                errors[field] = "La valeur accepte deux décimales au maximum." if field == "averageVideoWatchTimeSeconds" else "Le montant accepte deux décimales au maximum."
             else:
                 result[field] = float(value)
         elif int(value) != value:

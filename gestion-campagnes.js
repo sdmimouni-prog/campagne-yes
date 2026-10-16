@@ -5,8 +5,8 @@ const $ = id => document.getElementById(id);
 const form = $('campaign-form');
 const audienceEditor = createAudienceEditor($('audience-editor'));
 const names = {facebook:'Facebook',instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok',display:'Display'};
-const integers = ['impressions','reach','clicks','views','interactions'];
-const numeric = ['budget','spend',...integers];
+const integers = ['impressions','reach','clicks','views','videoViews3s','thruPlays15s','interactions'];
+const numeric = ['budget','spend','averageVideoWatchTimeSeconds',...integers];
 const fields = ['channel','name','start','end',...numeric];
 const number = new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2});
 const percent = new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -74,7 +74,7 @@ function renderList(updatedAt) {
   if(updatedAt!==undefined)$('last-saved').textContent=updatedAt?new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(updatedAt)):'Aucune saisie';
   $('list-count').textContent=visible.length;
   $('list-empty').hidden=visible.length>0;
-  $('campaign-list').innerHTML=visible.map(c=>`<tr class="${c.status==='archived'?'archived-row':''}"><td>${escape(c.name)}${c.status==='archived'?'<small>Supprimée · hors dashboard</small>':''}</td><td><span class="channel-pill">${names[c.channel]}</span></td><td>${date(c.start)}<small>au ${date(c.end)}</small></td><td class="numeric">${number.format(c.budget)}</td><td class="numeric">${number.format(c.impressions)}</td><td class="numeric">${c.reach==null?'—':number.format(c.reach)}</td><td class="numeric">${c.reach>0?percent.format(c.impressions/c.reach):'—'}</td><td class="numeric">${number.format(c.clicks)}</td><td class="numeric">${ctr(c.clicks,c.impressions)}</td><td><div class="row-actions">${c.status==='active'?`<button class="row-action" data-edit="${c.id}" aria-label="Modifier ${escape(c.name)}">Modifier</button><button class="row-action archive" data-archive="${c.id}" aria-label="Supprimer ${escape(c.name)}">Supprimer</button>`:`<button class="row-action" data-restore="${c.id}" aria-label="Restaurer ${escape(c.name)}">Restaurer</button>`}</div></td></tr>`).join('');
+  $('campaign-list').innerHTML=visible.map(c=>`<tr class="${c.status==='archived'?'archived-row':''}"><td>${escape(c.name)}${c.status==='archived'?'<small>Supprimée · hors dashboard</small>':''}</td><td><span class="channel-pill">${names[c.channel]}</span></td><td>${date(c.start)}<small>au ${date(c.end)}</small></td><td class="numeric">${number.format(c.budget)}</td><td class="numeric">${number.format(c.impressions)}</td><td class="numeric">${c.reach==null?'—':number.format(c.reach)}</td><td class="numeric">${c.reach>0?percent.format(c.impressions/c.reach):'—'}</td><td class="numeric">${number.format(c.clicks)}</td><td class="numeric">${ctr(c.clicks,c.impressions)}</td><td class="numeric">${c.videoViews3s==null?'—':number.format(c.videoViews3s)}</td><td class="numeric">${c.thruPlays15s==null?'—':number.format(c.thruPlays15s)}</td><td class="numeric">${c.averageVideoWatchTimeSeconds==null?'—':`${number.format(c.averageVideoWatchTimeSeconds)} s`}</td><td><div class="row-actions">${c.status==='active'?`<button class="row-action" data-edit="${c.id}" aria-label="Modifier ${escape(c.name)}">Modifier</button><button class="row-action archive" data-archive="${c.id}" aria-label="Supprimer ${escape(c.name)}">Supprimer</button>`:`<button class="row-action" data-restore="${c.id}" aria-label="Restaurer ${escape(c.name)}">Restaurer</button>`}</div></td></tr>`).join('');
 }
 function acceptSaved(data,generation) {
   if(!canApply(generation))return false;

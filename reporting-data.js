@@ -14,7 +14,7 @@ const PLATFORM_DEFINITIONS = Object.freeze([
   { id: 'display', name: 'Display', shortName: 'Display', color: '#E69D53' },
 ]);
 const CHANNEL_PLATFORMS = Object.freeze({ facebook: 'meta', instagram: 'meta', youtube: 'youtube', tiktok: 'tiktok', display: 'display' });
-const OPTIONAL_METRICS = ['spend', 'views', 'interactions'];
+const OPTIONAL_METRICS = ['spend', 'views', 'videoViews3s', 'thruPlays15s', 'averageVideoWatchTimeSeconds', 'interactions'];
 const AUDIENCE_METRICS = ['impressions', 'clicks', 'reach'];
 const AUDIENCE_LABELS = Object.freeze({
   gender: ['Femmes', 'Hommes', 'Non renseigné'],
@@ -91,7 +91,7 @@ function normalizeCampaign(record) {
   delete normalized.trueviews;
   for (const metric of OPTIONAL_METRICS) {
     const value = record[metric] ?? null;
-    if (value !== null && !validNumber(value, metric !== 'spend')) {
+    if (value !== null && !validNumber(value, !['spend', 'averageVideoWatchTimeSeconds'].includes(metric))) {
       throw new Error('Une mesure enregistrée contient une valeur invalide.');
     }
     normalized[metric] = value;
@@ -183,14 +183,23 @@ function aggregateMetrics(rows) {
     clicks: rows.reduce((sum, row) => sum + row.clicks, 0),
   };
   for (const metric of OPTIONAL_METRICS) {
+    if (metric === 'averageVideoWatchTimeSeconds') {
+      const measured = rows.filter(row => row[metric] != null);
+      const weighted = measured.map(row => ({ value: row[metric], weight: row.videoViews3s > 0 ? row.videoViews3s : row.thruPlays15s }))
+        .filter(row => row.weight > 0);
+      metrics[metric] = weighted.length
+        ? weighted.reduce((sum, row) => sum + row.value * row.weight, 0) / weighted.reduce((sum, row) => sum + row.weight, 0)
+        : measured.length === 1 ? measured[0][metric] : null;
+      continue;
+    }
     // Missing values are unknown, not zero. Incomplete aggregates stay unknown.
     // Additive metrics show the total of reported campaign values. Campaigns
     // without a value must not hide values supplied by other campaigns.
-    metrics[metric] = ['views', 'spend'].includes(metric)
-      ? rows.some(row => row[metric] !== null)
+    metrics[metric] = ['views', 'videoViews3s', 'thruPlays15s', 'spend'].includes(metric)
+      ? rows.some(row => row[metric] != null)
         ? metric === 'spend'
           ? roundMoney(rows.reduce((sum, row) => sum + Math.round((row.spend ?? 0) * 100), 0) / 100)
-          : rows.reduce((sum, row) => sum + (row.views ?? 0), 0)
+          : rows.reduce((sum, row) => sum + (row[metric] ?? 0), 0)
         : null
       : !rows.length || rows.some(row => row[metric] === null) ? null :
       metric === 'spend'
